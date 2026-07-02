@@ -223,14 +223,21 @@ export default function Schedule() {
   const min = dates.length ? new Date(Math.min(...dates)) : new Date('2026-01-01');
   const max = dates.length ? new Date(Math.max(...dates)) : new Date('2029-12-31');
   const pct = (d) => { const t = parseDate(d); if (!t) return 0; return Math.max(0, Math.min(100, ((t - min) / (max - min)) * 100)); };
-  const axisTicks = [];
+  const monthTicks = [];
+  const yearTicks = [];
   {
-    let dd = new Date(min.getFullYear(), Math.floor(min.getMonth() / 3) * 3, 1);
-    for (let k = 0; k < 48 && dd <= max; k++) {
+    let dd = new Date(min.getFullYear(), min.getMonth(), 1);
+    for (let k = 0; k < 60 && dd <= max; k++) {
       const iso = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-01`;
       const pp = pct(iso);
-      if (pp > 0.4 && pp < 99.6) axisTicks.push({ p: pp, label: dd.getMonth() === 0 ? String(dd.getFullYear()) : dd.toLocaleString('en-US', { month: 'short' }), year: dd.getMonth() === 0 });
-      dd = new Date(dd.getFullYear(), dd.getMonth() + 3, 1);
+      if (pp > 0.3 && pp < 99.7) monthTicks.push({ p: pp, num: dd.getMonth() + 1 });
+      dd = new Date(dd.getFullYear(), dd.getMonth() + 1, 1);
+    }
+    for (let y = min.getFullYear(); y <= max.getFullYear(); y++) {
+      const s = Math.max(min.getTime(), new Date(y, 0, 1).getTime());
+      const e = Math.min(max.getTime(), new Date(y + 1, 0, 1).getTime());
+      if (e <= s) continue;
+      yearTicks.push({ p: pct(new Date((s + e) / 2).toISOString().slice(0, 10)), year: y });
     }
   }
 
@@ -310,12 +317,13 @@ export default function Schedule() {
             <span className="lk"><span className="dot-s red" /> Critical</span>
           </div>
           <div className="card card-pad">
-            <div className="tl-axis"><div /><div className="ticks" style={{ position: 'relative', height: 15, display: 'block' }}>
-              {axisTicks.map((t, i) => <span key={i} style={{ position: 'absolute', left: `${t.p}%`, transform: 'translateX(-50%)', fontSize: t.year ? 11 : 9, fontWeight: t.year ? 700 : 400, color: t.year ? 'var(--bd-ink-2)' : 'var(--bd-ink-3)', whiteSpace: 'nowrap' }}>{t.label}</span>)}
+            <div className="tl-axis"><div /><div className="ticks" style={{ position: 'relative', height: 28, display: 'block' }}>
+              {yearTicks.map((t, i) => <span key={`y${i}`} style={{ position: 'absolute', left: `${t.p}%`, top: 0, transform: 'translateX(-50%)', fontSize: 14, fontWeight: 700, color: 'var(--bd-ink)' }}>{t.year}</span>)}
+              {monthTicks.map((t, i) => <span key={`m${i}`} style={{ position: 'absolute', left: `${t.p}%`, bottom: 0, transform: 'translateX(-50%)', fontSize: 8, color: 'var(--bd-ink-3)' }}>{t.num}</span>)}
             </div></div>
             <div className="timeline">
               <div style={{ position: 'absolute', top: 0, bottom: 0, left: `calc(${pct(TODAY)}% + ${(160 * (1 - pct(TODAY) / 100)).toFixed(1)}px)`, width: 2, background: 'var(--bd-red)', opacity: 0.6, zIndex: 5, pointerEvents: 'none' }}>
-                <span style={{ position: 'absolute', top: -13, left: -14, fontSize: 9, fontWeight: 700, color: 'var(--bd-red)', background: 'var(--bd-surface)', padding: '0 3px', borderRadius: 3 }}>Today</span>
+                <span style={{ position: 'absolute', bottom: -14, left: -14, fontSize: 9, fontWeight: 700, color: 'var(--bd-red)', background: 'var(--bd-surface)', padding: '0 3px', borderRadius: 3 }}>Today</span>
               </div>
               {sorted.map((p) => {
                 const st = projectStatus(p);

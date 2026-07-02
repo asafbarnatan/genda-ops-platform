@@ -65,6 +65,7 @@ export default function MissionControl() {
   const atRiskList = aps.filter((p) => ['atrisk', 'critical'].includes(projectStatus(p)));
   const flaggedTechs = technicians.filter((t) => t.pool !== 'Active');
   const bnProjects = (projectsByPhase(projects)[m.topBottleneck]) || [];
+  const returningProjects = aps.filter((p) => p.assignmentType === 'Returning');
   const goDetail = (screen, focus = null) => { navigate(screen, focus); setDetail(null); };
 
   const DETAILS = {
@@ -95,8 +96,10 @@ export default function MissionControl() {
     },
     returning: {
       title: '% returning deployments', value: `${m.pctReturning}%`, link: { screen: 'process', label: 'Open Process' },
-      formula: 'Deployments served by a returning technician ÷ all deployments.',
-      note: 'Currently 0% — all deployments are new-hire. The 2 Cloud Factory candidates are the vendor pilot that starts to lift this.', items: [],
+      why: 'Reusing an already-trained technician skips the ~6-week new-hire lead — the lever that lets the operation scale without hiring from scratch every time.',
+      formula: `Deployments served by a returning technician ÷ all deployments = ${m.returningDeploys} of ${m.totalDeploys}.`,
+      note: 'The Cloud Factory vendor pilot is how we grow this further.',
+      items: returningProjects.length ? returningProjects.map((p) => ({ name: p.name, note: `returning-tech · ${p.assignedTechs?.length || 0} deployment`, focus: p.id })) : [{ name: 'None yet', note: 'all current deployments are new-hire', bad: false }],
     },
     atRisk: {
       title: 'Projects at risk', value: m.atRisk, link: { screen: 'schedule', label: 'Open the Schedule' },

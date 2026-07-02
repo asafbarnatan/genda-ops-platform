@@ -161,13 +161,16 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
   // Customer (Account) SLA = delivered on the date committed to the client — the headline KPI
   const customerAdherence = aps.length ? Math.round(((aps.length - overdue.length) / aps.length) * 100) : 100;
   const bn = topBottleneck(projects);
+  const totalDeploys = aps.reduce((s, p) => s + (p.assignedTechs?.length || 0), 0);
+  const returningDeploys = aps.filter((p) => p.assignmentType === 'Returning').reduce((s, p) => s + (p.assignedTechs?.length || 0), 0);
 
   return {
     // Band 1 — Roee's north-star
     customerSlaAdherence: customerAdherence,
     readinessSlaAdherence: adherence,
     droppedOpportunities: overdue.length,
-    pctReturning: 0, // all deployments new-hire today; the 2 Cloud Factory candidates are the pilot
+    pctReturning: totalDeploys ? Math.round((returningDeploys / totalDeploys) * 100) : 0,
+    returningDeploys, totalDeploys,
     // Band 2 — operational health
     readyTechCoverage: `${acts.length} ready`,
     biggestLeak: 'Craigslist · 50% churn',
