@@ -160,6 +160,7 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
   const adherence = due.length ? Math.round((due.filter((p) => projectStatus(p, today) !== 'critical').length / due.length) * 100) : 100;
   // Customer (Account) SLA = delivered on the date committed to the client — the headline KPI
   const customerAdherence = aps.length ? Math.round(((aps.length - overdue.length) / aps.length) * 100) : 100;
+  const bn = topBottleneck(projects);
 
   return {
     // Band 1 — Roee's north-star
@@ -176,7 +177,8 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
     alertCritical: tierCount('critical'),
     alertAction: tierCount('action'),
     alertInfo: tierCount('info'),
-    topBottleneck: 'Readiness spine (Training → Kit)',
+    topBottleneck: bn.phase,
+    bottleneckCount: bn.count,
     // Quick overview
     projects: aps.length,
     technicians: technicians.length,
@@ -200,13 +202,22 @@ export function stepStatus(project, i) {
   if (i === prog) return 'doing';
   return 'todo';
 }
+// A project sits at the EARLIEST step that is not yet done/skipped — so a step
+// blocked with an ✕ pulls the project back to that step, even if later steps advanced.
+export function effectiveStep(project) {
+  for (let i = 0; i < STEPS.length; i++) {
+    const st = stepStatus(project, i);
+    if (st !== 'done' && st !== 'skipped') return i;
+  }
+  return STEPS.length - 1;
+}
 export function readinessPct(project) {
   const office = STEPS.filter((s) => s.office);
   const done = office.filter((s) => ['done', 'skipped'].includes(stepStatus(project, s.i))).length;
   return Math.round((done / office.length) * 100);
 }
 export function phaseOfProgress(project) {
-  return STEPS[Math.min(project.progress ?? 0, STEPS.length - 1)].phase;
+  return STEPS[effectiveStep(project)].phase;
 }
 export function projectsByPhase(projects) {
   const map = {}; PHASES.forEach((p) => (map[p] = []));
@@ -215,8 +226,15 @@ export function projectsByPhase(projects) {
 }
 export function projectsAtStep(projects) {
   const map = {}; STEPS.forEach((s) => (map[s.i] = []));
-  activeProjects(projects).forEach((p) => { const i = Math.min(p.progress ?? 0, STEPS.length - 1); map[i].push(p); });
+  activeProjects(projects).forEach((p) => { map[effectiveStep(p)].push(p); });
   return map;
+}
+// The live bottleneck = the phase where the most projects actually sit right now (provable).
+export function topBottleneck(projects) {
+  const byPhase = projectsByPhase(projects);
+  let best = { phase: '—', count: 0 };
+  PHASES.forEach((ph) => { if (byPhase[ph].length > best.count) best = { phase: ph, count: byPhase[ph].length }; });
+  return best;
 }
 export function recurringVisits(project) {
   if (!project.requestedDelivery || !project.projectEnd) return [];

@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useStore } from '../data/store.jsx';
 import {
   projectStatus, statusReason, STATUS_LABEL, techniciansNeeded, readinessBy, recruitBy, fmtDate, parseDate, daysBetween, addDays,
-  stepStatus, readinessPct, phaseOfProgress, recurringVisits, assignedNames, activeTechs,
+  stepStatus, effectiveStep, readinessPct, phaseOfProgress, recurringVisits, assignedNames, activeTechs,
 } from '../data/derive';
-import { STEPS, PHASES, BOUNDARY_STEP } from '../data/seed';
+import { STEPS, PHASES, BOUNDARY_STEP, TODAY } from '../data/seed';
 import { StatusPill, Icon, FilterBar } from '../components/bits.jsx';
 import { EntityModal } from '../components/Modal.jsx';
 
@@ -223,7 +223,16 @@ export default function Schedule() {
   const min = dates.length ? new Date(Math.min(...dates)) : new Date('2026-01-01');
   const max = dates.length ? new Date(Math.max(...dates)) : new Date('2029-12-31');
   const pct = (d) => { const t = parseDate(d); if (!t) return 0; return Math.max(0, Math.min(100, ((t - min) / (max - min)) * 100)); };
-  const years = [2026, 2027, 2028, 2029];
+  const axisTicks = [];
+  {
+    let dd = new Date(min.getFullYear(), Math.floor(min.getMonth() / 3) * 3, 1);
+    for (let k = 0; k < 48 && dd <= max; k++) {
+      const iso = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-01`;
+      const pp = pct(iso);
+      if (pp > 0.4 && pp < 99.6) axisTicks.push({ p: pp, label: dd.getMonth() === 0 ? String(dd.getFullYear()) : dd.toLocaleString('en-US', { month: 'short' }), year: dd.getMonth() === 0 });
+      dd = new Date(dd.getFullYear(), dd.getMonth() + 3, 1);
+    }
+  }
 
   const applyUpdate = (projId, patch, log) => {
     const p = projects.find((x) => x.id === projId);
@@ -293,6 +302,7 @@ export default function Schedule() {
             <span className="lk"><span className="dot-s grey" /> Quarterly recurring visit</span>
             <span className="lk"><span style={{ opacity: 0.4 }}>◇</span> Previous date (ghost)</span>
             <span className="lk"><span className="pill green" style={{ fontSize: 9, padding: '1px 6px' }}>↩</span> Returning-tech</span>
+            <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-red)', verticalAlign: 'middle' }} /> Today</span>
             <span style={{ flexBasis: '100%', height: 0 }} />
             <span className="micro" style={{ letterSpacing: '0.05em' }}>Status</span>
             <span className="lk"><span className="dot-s green" /> On track</span>
@@ -300,8 +310,13 @@ export default function Schedule() {
             <span className="lk"><span className="dot-s red" /> Critical</span>
           </div>
           <div className="card card-pad">
-            <div className="tl-axis"><div /><div className="ticks">{years.map((y) => <span key={y}>{y}</span>)}</div></div>
+            <div className="tl-axis"><div /><div className="ticks" style={{ position: 'relative', height: 15, display: 'block' }}>
+              {axisTicks.map((t, i) => <span key={i} style={{ position: 'absolute', left: `${t.p}%`, transform: 'translateX(-50%)', fontSize: t.year ? 11 : 9, fontWeight: t.year ? 700 : 400, color: t.year ? 'var(--bd-ink-2)' : 'var(--bd-ink-3)', whiteSpace: 'nowrap' }}>{t.label}</span>)}
+            </div></div>
             <div className="timeline">
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: `calc(${pct(TODAY)}% + ${(160 * (1 - pct(TODAY) / 100)).toFixed(1)}px)`, width: 2, background: 'var(--bd-red)', opacity: 0.6, zIndex: 5, pointerEvents: 'none' }}>
+                <span style={{ position: 'absolute', top: -13, left: -14, fontSize: 9, fontWeight: 700, color: 'var(--bd-red)', background: 'var(--bd-surface)', padding: '0 3px', borderRadius: 3 }}>Today</span>
+              </div>
               {sorted.map((p) => {
                 const st = projectStatus(p);
                 const left = pct(p.requestedDelivery), right = pct(p.projectEnd || p.requestedDelivery);
@@ -345,7 +360,7 @@ export default function Schedule() {
                     <td><Sel value={p.region} options={REGIONS} onChange={(v) => editCell(p, 'region', v, 'Region')} /></td>
                     <td>Gil</td>
                     <td><Sel value={p.assignmentType} options={['New-hire', 'Returning']} onChange={(v) => editCell(p, 'assignmentType', v, 'Assignment')} /></td>
-                    <td><Sel wide value={`${(p.progress ?? 0) + 1}. ${STEPS[p.progress ?? 0].name}`} options={stepOptions} onChange={(v) => editStep(p, v)} /></td>
+                    <td><Sel wide value={`${effectiveStep(p) + 1}. ${STEPS[effectiveStep(p)].name}`} options={stepOptions} onChange={(v) => editStep(p, v)} /></td>
                     <td><Sel value={p.type} options={TYPES} onChange={(v) => editCell(p, 'type', v, 'Type')} /></td>
                     <td><Num value={p.floors} onChange={(v) => editCell(p, 'floors', v, 'Floors')} /></td>
                     <td><Num value={p.buildings} onChange={(v) => editCell(p, 'buildings', v, 'Buildings')} /></td>

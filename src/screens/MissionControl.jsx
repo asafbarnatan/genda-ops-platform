@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
-import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite } from '../data/derive';
+import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite, projectsByPhase } from '../data/derive';
 import { Tile, Icon } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
 
@@ -64,6 +64,7 @@ export default function MissionControl() {
   const overdueList = aps.filter((p) => projectStatus(p) === 'critical');
   const atRiskList = aps.filter((p) => ['atrisk', 'critical'].includes(projectStatus(p)));
   const flaggedTechs = technicians.filter((t) => t.pool !== 'Active');
+  const bnProjects = (projectsByPhase(projects)[m.topBottleneck]) || [];
   const goDetail = (screen, focus = null) => { navigate(screen, focus); setDetail(null); };
 
   const DETAILS = {
@@ -109,9 +110,10 @@ export default function MissionControl() {
       items: acts.map((t) => ({ name: t.name, note: `composite ${qualityComposite(t.metrics)}`, bad: qualityComposite(t.metrics) < 3, warn: qualityComposite(t.metrics) < 3.5, focus: t.id, goScreen: 'quality' })),
     },
     bottleneck: {
-      title: 'Top bottleneck', value: 'Readiness spine', link: { screen: 'process', label: 'Open Process' },
-      formula: 'The phase where projects dwell longest before deploying: OSHA10 → Training → Kit → PPE.',
-      note: 'Standardizing + parallelizing this phase is the main process fix.', items: [],
+      title: 'Top bottleneck', value: m.topBottleneck, link: { screen: 'process', label: 'Open Process' },
+      why: 'The phase holding the most projects is where the queue actually is — the first place to unblock to move the whole portfolio.',
+      formula: `The process phase with the most projects right now: ${m.bottleneckCount} of ${aps.length} sit in "${m.topBottleneck}".`,
+      items: bnProjects.map((p) => ({ name: p.name, note: 'in this phase', focus: p.id })),
     },
     alertCritical: { title: 'Alerts · critical', value: m.alertCritical, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Alerts that hit a client outcome or breach the Readiness SLA.', items: alerts.filter((a) => a.tier === 'critical').map((a) => ({ name: a.trigger, note: a.subject, bad: true })) },
     alertAction: { title: 'Alerts · action', value: m.alertAction, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Real issues you own the timing on — handle this week.', items: alerts.filter((a) => a.tier === 'action').map((a) => ({ name: a.trigger, note: a.subject, warn: true })) },
@@ -161,8 +163,8 @@ export default function MissionControl() {
           hint="Weighted average of the active roster's composite scores. Click to see each technician's contribution." />
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>Readiness spine</span>} sub="most projects queue at Training → Kit" onOpen={() => setDetail('bottleneck')}
-          hint="The phase where projects dwell longest before deploying. Click for detail." />
+        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>{m.topBottleneck}</span>} sub={`${m.bottleneckCount} projects sit here now`} onOpen={() => setDetail('bottleneck')}
+          hint="The process phase with the most projects right now — where the queue actually is. Click for the list." />
         <Tile accent="red" label="Alerts · critical" value={m.alertCritical} sub="act now, ~24-48h" onOpen={() => setDetail('alertCritical')} hint="Alerts that hit a client outcome or breach the Readiness SLA. Click to see them." />
         <Tile accent="amber" label="Alerts · action" value={m.alertAction} sub="handle this week" onOpen={() => setDetail('alertAction')} hint="Real issues you own the timing on. Click to see them." />
         <Tile accent="green" label="Alerts · info" value={m.alertInfo} sub="monitor only" onOpen={() => setDetail('alertInfo')} hint="Awareness only. Click to see them." />
