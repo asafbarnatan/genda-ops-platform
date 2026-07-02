@@ -3,7 +3,7 @@
 // `fictive` rows (technicians, candidates, scores, assignments) are ours, per 4_Data_Layer.md.
 // This module is the initial seed; the store loads it into localStorage on first run.
 
-export const SEED_VERSION = 'v3';
+export const SEED_VERSION = 'v4';
 export const TODAY = '2026-07-01'; // the operation's "today" (matches the strategy docs)
 
 // ---------------------------------------------------------------------------
@@ -12,7 +12,7 @@ export const TODAY = '2026-07-01'; // the operation's "today" (matches the strat
 // (derived from the Data Layer assignment map §5).
 // ---------------------------------------------------------------------------
 const baseProjects = [
-  { id: 'BBH', name: 'BBH', product: 'Genda Pro', stage: 'Commercials', type: 'Healthcare', account: 'XX Construction', country: 'United States', region: 'Texas', requestedDelivery: '2026-07-07', projectEnd: '2028-07-07', durationMo: 24, floors: 12, buildings: 2, owner: 'DF', channel: 'Craigslist', assignedTechs: ['T-101'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Deployed', dataNote: '', provenance: 'provided' },
+  { id: 'BBH', name: 'BBH', product: 'Genda Pro', stage: 'Commercials', type: 'Healthcare', account: 'XX Construction', country: 'United States', region: 'Texas', requestedDelivery: '2026-07-07', projectEnd: '2028-07-07', durationMo: 24, floors: 12, buildings: 2, owner: 'DF', channel: 'Craigslist', assignedTechs: ['T-101'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Deployed', staffingOk: true, dataNote: '', provenance: 'provided' },
   { id: 'Buck D', name: 'Buck D', product: 'Genda Pro', stage: 'Paperwork', type: 'Residential', account: 'JJ Construction', country: 'United States', region: 'Southeast', requestedDelivery: '2027-05-11', projectEnd: '2029-01-01', durationMo: 18, floors: 14, buildings: 1, owner: 'LS', channel: 'Facebook', assignedTechs: ['T-104'], candidateScore: 3, training: 'Done', recruitmentStatus: 'Onboarded', dataNote: '', provenance: 'provided' },
   { id: 'Hub At', name: 'Hub At', product: 'Genda Pro', stage: 'Paperwork', type: 'Residential', account: 'JJ Construction', country: 'United States', region: 'Southeast', requestedDelivery: '2026-08-04', projectEnd: '2028-07-21', durationMo: 14, floors: 11, buildings: 1, owner: 'LS', channel: 'Craigslist', assignedTechs: ['T-102'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Scheduled', dataNote: '', provenance: 'provided' },
   { id: 'JPSM', name: 'JPSM', product: 'Genda Pro', stage: 'Paperwork', type: 'Healthcare', account: 'JJ Construction', country: 'United States', region: 'Southeast', requestedDelivery: '2026-07-01', projectEnd: '2029-03-19', durationMo: 16, floors: 15, buildings: 2, owner: 'DF', channel: 'Craigslist', assignedTechs: ['T-102', 'T-104'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Deployed', dataNote: '', provenance: 'provided' },

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../data/store.jsx';
 import { funnelLiquidity, channelScorecard, qualityComposite, techniciansNeeded, recruitBy, fmtDate, activeProjects, daysBetween } from '../data/derive';
 import { TODAY } from '../data/seed';
-import { EntityModal } from '../components/Modal.jsx';
+import { EntityModal, Modal } from '../components/Modal.jsx';
 import { Icon, PoolPill, FilterBar } from '../components/bits.jsx';
 import LogicPane from '../components/LogicPane.jsx';
 
@@ -10,9 +10,9 @@ const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud
 const REGIONS = ['Texas', 'Southeast', 'West'];
 const STAGES = ['Sourced', 'Screened', 'Onboarded', 'Deployed'];
 
-// staffing-demand risk → pill (per-project half of Part 1: needed vs assigned, by when)
-const STAFF_RISK = { ok: ['green', 'Staffed'], atrisk: ['amber', 'Recruit now'], critical: ['red', 'Gap inside SLA'], plan: ['grey', 'On plan'] };
-const RISK_ORDER = { critical: 0, atrisk: 1, plan: 2, ok: 3 };
+// staffing-demand risk → pill. 'accepted' = the OM waived the gap by judgment (heuristic overridden).
+const STAFF_RISK = { ok: ['green', 'Staffed'], accepted: ['green', 'Accepted · OM'], atrisk: ['amber', 'Recruit now'], critical: ['red', 'Gap inside SLA'], plan: ['grey', 'On plan'] };
+const RISK_ORDER = { critical: 0, atrisk: 1, plan: 2, accepted: 3, ok: 4 };
 const staffPill = (risk) => { const [cls, label] = STAFF_RISK[risk]; return <span className={`pill ${cls}`}><span className={`dot-s ${cls}`} />{label}</span>; };
 
 function nextId(prefix, arr) {
@@ -39,10 +39,39 @@ const techFields = [
   { name: 'candidateScore', label: 'Candidate score (1-5)', type: 'number', min: 1, max: 5 },
 ];
 
+// Drill-down: click a channel row → the technicians it produced (or, for the projected vendor, its pipeline candidates).
+function ChannelDetail({ channel, projected, technicians, candidates, onClose }) {
+  const techs = technicians.filter((t) => t.channel === channel);
+  const cands = candidates.filter((c) => isVendor(c.channel));
+  return (
+    <Modal title={`${channel} · channel detail`} onClose={onClose} footer={<button className="btn-text" onClick={onClose}>Close</button>}>
+      {projected ? (
+        <>
+          <div className="small muted" style={{ marginBottom: 12 }}>Projected channel — a vendor supplies pre-vetted technicians, so there is no deployed history to score yet. These {cands.length} candidates sit in the pipeline (they enter at Screened, skipping Sourcing).</div>
+          <table className="table">
+            <thead><tr><th>Candidate</th><th>Region</th><th>Stage</th><th className="num">Cand. score</th></tr></thead>
+            <tbody>{cands.map((c) => <tr key={c.id}><td><b>{c.name}</b></td><td>{c.region}</td><td>{c.stage}</td><td className="num">{c.candidateScore ?? '—'}</td></tr>)}</tbody>
+          </table>
+        </>
+      ) : techs.length === 0 ? <div className="muted">No technicians sourced through {channel} yet.</div> : (
+        <>
+          <div className="small muted" style={{ marginBottom: 12 }}>{techs.length} technician{techs.length === 1 ? '' : 's'} sourced through {channel}. Quality is the weighted 1-5 composite; pool state follows the Part 3 threshold ladder.</div>
+          <table className="table">
+            <thead><tr><th>Technician</th><th>Region</th><th className="num">Quality</th><th className="num">Installs</th><th>Pool</th></tr></thead>
+            <tbody>{techs.map((t) => <tr key={t.id}><td><b>{t.name}</b> <span className="small muted">{t.id}</span></td><td>{t.region}</td><td className="num"><b>{qualityComposite(t.metrics)}</b></td><td className="num">{t.installs}</td><td><PoolPill pool={t.pool} /></td></tr>)}</tbody>
+          </table>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 export default function Pipeline() {
   const { candidates, technicians, projects, add, update, remove, navigate } = useStore();
   const [f, setF] = useState({ channel: 'All', region: 'All' });
   const [modal, setModal] = useState(null);
+  const [channelSel, setChannelSel] = useState(null); // channel drill-down modal
+  const [namePop, setNamePop] = useState(null);        // "assigned" → technician-names modal (holds the row)
 
   const matchC = (r) => (f.channel === 'All' || r.channel === f.channel) && (f.region === 'All' || r.region === f.region);
   const cands = candidates.filter(matchC);
@@ -54,11 +83,14 @@ export default function Pipeline() {
   // Per-project staffing demand — recomputes live as techs are assigned or dates change.
   const staffingRows = activeProjects(projects).map((p) => {
     const needed = techniciansNeeded(p);
+    const techs = (p.assignedTechs || []).map((id) => technicians.find((t) => t.id === id)).filter(Boolean);
     const assigned = p.assignedTechs?.length || 0;
-    const gap = Math.max(0, needed - assigned);
+    const gapRaw = Math.max(0, needed - assigned);
+    const accepted = !!p.staffingOk && gapRaw > 0;   // OM judged the assigned crew sufficient — heuristic waived
+    const gap = accepted ? 0 : gapRaw;               // an accepted gap counts as covered
     const d = daysBetween(TODAY, p.requestedDelivery);
-    const risk = gap === 0 ? 'ok' : (d != null && d <= 14) ? 'critical' : (d != null && d <= 42) ? 'atrisk' : 'plan';
-    return { id: p.id, name: p.name, region: p.region, requestedDelivery: p.requestedDelivery, assignmentType: p.assignmentType, needed, assigned, gap, recruitBy: recruitBy(p), risk };
+    const risk = gapRaw === 0 ? 'ok' : accepted ? 'accepted' : (d != null && d <= 14) ? 'critical' : (d != null && d <= 42) ? 'atrisk' : 'plan';
+    return { id: p.id, name: p.name, region: p.region, requestedDelivery: p.requestedDelivery, assignmentType: p.assignmentType, needed, techs, assigned, gapRaw, gap, accepted, recruitBy: recruitBy(p), risk };
   }).sort((a, b) => (RISK_ORDER[a.risk] - RISK_ORDER[b.risk]) || ((a.requestedDelivery || '') > (b.requestedDelivery || '') ? 1 : -1));
   const totalNeeded = staffingRows.reduce((s, r) => s + r.needed, 0);
   const totalAssigned = staffingRows.reduce((s, r) => s + r.assigned, 0);
@@ -128,31 +160,6 @@ export default function Pipeline() {
         </div>
       </div>
 
-      {/* Per-project staffing demand — the "per project" half of Part 1 (needed / assigned / gap / recruit-by) */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-head"><h3>Staffing demand by project</h3><span className="muted small">the "per project" view · technicians needed vs assigned, the gap, and the recruit-by date — click a row to open it</span></div>
-        <div className="table-scroll">
-          <table className="table" style={{ minWidth: 760 }}>
-            <thead><tr><th>Project</th><th>Region</th><th>Requested delivery</th><th className="num">Needed</th><th className="num">Assigned</th><th className="num">Gap</th><th>Recruit by</th><th>Staffing status</th></tr></thead>
-            <tbody>
-              {staffingRows.map((r) => (
-                <tr key={r.id} className="rowlink" onClick={() => navigate('schedule', r.id)}>
-                  <td><b>{r.name}</b> {r.assignmentType === 'Returning' && <span className="pill green" style={{ fontSize: 9 }}>↩ returning</span>}</td>
-                  <td>{r.region}</td>
-                  <td>{fmtDate(r.requestedDelivery)}</td>
-                  <td className="num">{r.needed}</td>
-                  <td className="num">{r.assigned}</td>
-                  <td className="num">{r.gap > 0 ? <b style={{ color: '#b23524' }}>{r.gap}</b> : '0'}</td>
-                  <td>{fmtDate(r.recruitBy)}</td>
-                  <td>{staffPill(r.risk)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="table-foot"><span>{staffingRows.length} active projects · <b>{totalNeeded}</b> technician-slots of demand</span><span className="muted">{totalAssigned} assigned · {totalGap} open · needed = floors/buildings rule (≤20 &amp; 1 bldg → 1 · 21-40 or 2 bldgs → 2 · 41+ → 3)</span></div>
-      </div>
-
       {/* Funnel / liquidity analysis */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-head"><h3>Funnel & liquidity</h3><span className="muted small">throughput, velocity, and where flow gets stuck</span></div>
@@ -171,29 +178,75 @@ export default function Pipeline() {
         </div>
       </div>
 
-      {/* Channel scorecard */}
-      <div className="card">
-        <div className="card-head"><h3>Channel-quality scorecard</h3><span className="muted small">the vendor case: Craigslist's own churn</span></div>
-        <table className="table">
-          <thead><tr><th>Channel</th><th className="num">Technicians</th><th className="num">Avg quality</th><th className="num">Churn rate</th><th>Read</th></tr></thead>
-          <tbody>
-            {scorecard.map((r) => (
-              <tr key={r.channel}>
-                <td><b>{r.channel}</b> {r.projected && <span className="pill indigo">projected</span>}</td>
-                <td className="num">{r.projected ? `${vendorInPipeline} in pipeline` : r.count}</td>
-                <td className="num">{r.avgQuality ?? '—'}</td>
-                <td className="num">{r.projected ? '—' : `${r.churnRate}%`}</td>
-                <td className="small muted">{r.channel === 'Craigslist' ? 'Floods leads, 50% churn → expensive per ready tech' : r.projected ? 'Pre-vetted, enters at Screened → the scale play' : r.count <= 2 ? 'Small sample' : ''}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Staffing demand + channel scorecard, side by side */}
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', alignItems: 'start' }}>
+        {/* Per-project staffing demand — the "per project" half of Part 1 */}
+        <div className="card">
+          <div className="card-head"><h3>Staffing demand by project</h3><span className="muted small">click Assigned for names · Accept a gap when the crew is enough</span></div>
+          <div className="table-scroll">
+            <table className="table" style={{ minWidth: 540 }}>
+              <thead><tr><th>Project</th><th className="num">Needed</th><th className="num">Assigned</th><th className="num">Gap</th><th>Recruit by</th><th>Status</th></tr></thead>
+              <tbody>
+                {staffingRows.map((r) => (
+                  <tr key={r.id} className="rowlink" onClick={() => navigate('schedule', r.id)}>
+                    <td><b>{r.name}</b> <span className="small muted">{r.region}</span> {r.assignmentType === 'Returning' && <span className="pill green" style={{ fontSize: 9 }}>↩</span>}</td>
+                    <td className="num">{r.needed}</td>
+                    <td className="num"><button className="linknum" onClick={(e) => { e.stopPropagation(); setNamePop(r); }} title="Show assigned technicians">{r.assigned}{r.assigned > 0 ? ' ▾' : ''}</button></td>
+                    <td className="num">{r.gapRaw > 0 ? (r.accepted ? <span className="muted" style={{ textDecoration: 'line-through' }}>{r.gapRaw}</span> : <b style={{ color: '#b23524' }}>{r.gapRaw}</b>) : '0'}</td>
+                    <td className="small">{fmtDate(r.recruitBy)}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {staffPill(r.risk)}
+                        {r.gapRaw > 0 && (r.accepted
+                          ? <button className="btn-text btn-sm" onClick={(e) => { e.stopPropagation(); update('projects', r.id, { staffingOk: false }); }} title="Re-open this gap">undo</button>
+                          : <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); update('projects', r.id, { staffingOk: true }); }} title="Waive this gap — your call that the assigned crew is enough">Accept</button>)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="table-foot"><span><b>{totalNeeded}</b> slots of demand · {totalAssigned} assigned</span><span className="muted">{totalGap} open gap{totalGap === 1 ? '' : 's'} · Needed = floors/buildings heuristic</span></div>
+        </div>
+
+        {/* Channel scorecard — click a channel for its technicians */}
+        <div className="card">
+          <div className="card-head"><h3>Channel-quality scorecard</h3><span className="muted small">click a channel to see its technicians</span></div>
+          <table className="table">
+            <thead><tr><th>Channel</th><th className="num">Techs</th><th className="num">Avg Q</th><th className="num">Churn</th></tr></thead>
+            <tbody>
+              {scorecard.map((r) => (
+                <tr key={r.channel} className="rowlink" onClick={() => setChannelSel({ channel: r.channel, projected: r.projected })}>
+                  <td><b>{r.channel}</b> {r.projected && <span className="pill indigo">projected</span>} <span className="small muted">↗</span></td>
+                  <td className="num">{r.projected ? vendorInPipeline : r.count}</td>
+                  <td className="num">{r.avgQuality ?? '—'}</td>
+                  <td className="num">{r.projected ? '—' : `${r.churnRate}%`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="table-foot"><span className="muted">Craigslist floods leads but churns ~50% → expensive per ready tech; vendors enter pre-vetted at Screened — the scale play.</span></div>
+        </div>
       </div>
 
       {modal && (
         modal.type === 'cand'
           ? <EntityModal title={modal.row?.id ? `Edit ${modal.row.name}` : 'Add candidate'} fields={candFields} initial={modal.row || {}} onSave={saveCand} onClose={() => setModal(null)} onDelete={modal.row?.id ? () => remove('candidates', modal.row.id) : undefined} />
           : <EntityModal title={modal.row?.id ? `Edit ${modal.row.name}` : 'Add technician'} fields={techFields} initial={modal.row || {}} onSave={saveTech} onClose={() => setModal(null)} onDelete={modal.row?.id ? () => remove('technicians', modal.row.id) : undefined} />
+      )}
+
+      {channelSel && <ChannelDetail channel={channelSel.channel} projected={channelSel.projected} technicians={technicians} candidates={candidates} onClose={() => setChannelSel(null)} />}
+
+      {namePop && (
+        <Modal title={`${namePop.name} · assigned technicians`} onClose={() => setNamePop(null)} footer={<button className="btn-text" onClick={() => setNamePop(null)}>Close</button>}>
+          {namePop.techs.length ? (
+            <table className="table">
+              <thead><tr><th>Technician</th><th>Region</th><th className="num">Quality</th><th>Pool</th></tr></thead>
+              <tbody>{namePop.techs.map((t) => <tr key={t.id}><td><b>{t.name}</b> <span className="small muted">{t.id}</span></td><td>{t.region}</td><td className="num"><b>{qualityComposite(t.metrics)}</b></td><td><PoolPill pool={t.pool} /></td></tr>)}</tbody>
+            </table>
+          ) : <div className="muted">No technicians assigned to {namePop.name} yet — needs {namePop.needed}.</div>}
+        </Modal>
       )}
     </div>
   );
