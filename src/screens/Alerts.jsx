@@ -28,7 +28,7 @@ export default function Alerts() {
   return (
     <div className="page">
       <div className="page-head">
-        <div><h1 className="page-title">Alerts & Decision Logic</h1><div className="page-sub">Triaged by time-to-consequence × client-impact · derived live from the data</div></div>
+        <div><h1 className="page-title">Alerts & Decision Logic</h1><div className="page-sub">What the system flags automatically, how urgent each one is, and what to do — updated live as the data changes.</div></div>
         <button className="btn btn-primary" onClick={() => setModal({ tier: 'action', family: 'Schedule', owner: 'OM' })}><Icon.plus /> Add event</button>
       </div>
 
@@ -44,8 +44,13 @@ export default function Alerts() {
           </tbody>
         </table>
         <div className="card-pad" style={{ paddingTop: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Tie-break: anything that threatens the <b>Readiness SLA</b> or a client's data outranks anything that is only internal efficiency.</div>
-          <div className="small muted" style={{ marginTop: 4 }}>Routing (Jira automation): 🔴 Slack @mention + email + "Act Now" · 🟠 dashboard queue + daily digest · 🟢 ambient digest.</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Tie-break, when two alerts compete: the one that could hurt a client — a breach of the <b>Readiness SLA</b> or their data — always wins over anything that is only internal efficiency.</div>
+          <div className="micro" style={{ margin: '12px 0 6px' }}>How each tier reaches the team (auto-routed by Jira)</div>
+          <div className="small" style={{ display: 'grid', gap: 4 }}>
+            <div><span className="pill red">🔴 Critical</span> instant Slack ping + email to the OM &amp; Regional Lead, and it pins to the "Act Now" strip.</div>
+            <div><span className="pill amber">🟠 Action</span> added to the dashboard "This Week" queue and the once-daily digest — no interruption.</div>
+            <div><span className="pill green">🟢 Info</span> logged quietly in the daily digest. Nobody is pinged.</div>
+          </div>
         </div>
       </div>
 

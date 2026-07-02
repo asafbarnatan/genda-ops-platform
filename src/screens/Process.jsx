@@ -1,24 +1,54 @@
-import { useState } from 'react';
 import { useStore } from '../data/store.jsx';
-import { STEPS, PHASES, BOUNDARY_STEP } from '../data/seed';
-import { projectsAtStep, projectStatus } from '../data/derive';
-import { StatusPill } from '../components/bits.jsx';
+import { STEPS } from '../data/seed';
+import { projectsAtStep } from '../data/derive';
 
 const BOTTLENECK_PHASES = new Set(['Buildots Training', 'Equipment Setup']);
+const phaseSteps = (phase) => STEPS.filter((s) => s.phase === phase);
+
+function PhaseBlock({ phase, atStep, onChip, small }) {
+  const steps = phaseSteps(phase);
+  const count = steps.reduce((n, s) => n + (atStep[s.i]?.length || 0), 0);
+  const bottleneck = BOTTLENECK_PHASES.has(phase);
+  return (
+    <div className={`wf2-phase ${bottleneck ? 'bottleneck' : ''}`}>
+      <div className="wf2-phead">
+        <span className="pn">{phase}</span>
+        <span className="pill grey">{steps[0].office ? 'office' : 'field'}</span>
+        {bottleneck && <span className="pill red">skipped on returning path</span>}
+        <span className="spacer" />
+        <span className="small muted">{count} project{count === 1 ? '' : 's'} here</span>
+      </div>
+      <div className="wf2-steps" style={small ? { gridTemplateColumns: '1fr' } : {}}>
+        {steps.map((s) => {
+          const ps = atStep[s.i] || [];
+          return (
+            <div key={s.i} className={`wf2-step ${bottleneck && ps.length ? 'hot' : ''}`}>
+              <div className="st-head"><span className="small muted mono-num">{s.i + 1}</span><span>{s.name}</span>{ps.length > 0 && <span className="c">{ps.length}</span>}</div>
+              {ps.length > 0 && <div className="wf2-chips">{ps.map((p) => <span key={p.id} className="wf2-chip" onClick={() => onChip(p.id)}>{p.name}</span>)}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const INSIGHTS = [
+  { problem: 'The readiness spine (OSHA10 → Training → Kit → PPE) runs in sequence — it is the phase projects dwell in longest before they can deploy.', fix: 'Parallelize the independent gates and write the flow down as a Confluence SOP.', detail: 'A "prep technician" Claude Code Skill can fire the parallel gates on contract-sign (illustrative, not over-promised).' },
+  { problem: 'Every project is staffed from scratch on a ~6-week new-hire lead — no reuse of already-trained technicians.', fix: 'Default returning technicians to the fast path; cluster work per region so reuse is even possible.', detail: 'Reuse is geography-bound → the case for one-vendor-per-region. The tool surfaces same-region availability; no smart-matching pitch.' },
+  { problem: 'The operation runs on disconnected, manual tools (Sheets, email) — dates go stale and feedback loops leak.', fix: 'One source of truth in Jira + documented SOPs in Confluence.', detail: 'Native Jira automation now; Claude Code MCP / Skills are the grow-into intelligence layer.' },
+];
 
 export default function Process() {
   const { projects, navigate } = useStore();
   const atStep = projectsAtStep(projects);
-  const [drill, setDrill] = useState(null); // step index
-
-  const phaseCount = (phase) => STEPS.filter((s) => s.phase === phase).reduce((n, s) => n + (atStep[s.i]?.length || 0), 0);
-  const drillStep = drill != null ? STEPS[drill] : null;
-  const drillProjects = drill != null ? atStep[drill] : [];
+  const chip = (id) => navigate('schedule', id);
+  const Arrow = () => <div className="wf2-arrow" style={{ textAlign: 'center' }}>↓</div>;
 
   return (
     <div className="page">
       <div className="page-head">
-        <div><h1 className="page-title">Process & Optimisation</h1><div className="page-sub">The 24-step template as a live workflow + aggregate bottleneck lens · click any step to see the projects in it</div></div>
+        <div><h1 className="page-title">Process & Optimisation</h1><div className="page-sub">The 24-step template as a live workflow · every step shows the projects sitting in it (click a name to open it)</div></div>
       </div>
 
       <div className="card card-pad" style={{ marginBottom: 16 }}>
@@ -31,79 +61,40 @@ export default function Process() {
         </div>
       </div>
 
-      <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
-        {/* Top-down workflow */}
-        <div style={{ flex: drill != null ? '1 1 60%' : '1 1 100%', minWidth: 0 }}>
-          <div className="wf2">
-            {PHASES.map((phase, pi) => {
-              const steps = STEPS.filter((s) => s.phase === phase);
-              const isField = !steps[0].office;
-              const bottleneck = BOTTLENECK_PHASES.has(phase);
-              return (
-                <div key={phase}>
-                  {steps[0].i === BOUNDARY_STEP && (
-                    <div className="boundary" style={{ margin: '4px 0 10px', borderRadius: 6 }}>▾ Handoff to the Regional Lead (Gil) · field execution begins ▾</div>
-                  )}
-                  <div className={`wf2-phase ${bottleneck ? 'bottleneck' : ''}`}>
-                    <div className="wf2-phead">
-                      <span className="pn">{pi + 1}. {phase}</span>
-                      <span className="pill grey">{isField ? 'field' : 'office'}</span>
-                      {bottleneck && <span className="pill red">bottleneck · readiness spine</span>}
-                      <span className="spacer" />
-                      <span className="small muted">{phaseCount(phase)} project{phaseCount(phase) === 1 ? '' : 's'} here</span>
-                    </div>
-                    <div className="wf2-steps">
-                      {steps.map((s) => {
-                        const n = atStep[s.i]?.length || 0;
-                        return (
-                          <div key={s.i} className={`wf2-step ${bottleneck && n > 0 ? 'hot' : ''} ${drill === s.i ? 'hot' : ''}`} onClick={() => setDrill(drill === s.i ? null : s.i)}>
-                            <span className="small muted mono-num">{s.i + 1}</span>
-                            <span>{s.name}</span>
-                            {n > 0 && <span className="c">{n}</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {pi < PHASES.length - 1 && <div className="wf2-arrow" style={{ textAlign: 'center' }}>↓</div>}
-                </div>
-              );
-            })}
+      <div className="wf2">
+        <PhaseBlock phase="Pre-Signature" atStep={atStep} onChip={chip} />
+        <Arrow />
+        <PhaseBlock phase="Signature" atStep={atStep} onChip={chip} />
+
+        {/* Fork: not every project needs Training + Equipment */}
+        <div className="wf2-arrow" style={{ textAlign: 'center' }}>↓</div>
+        <div className="bypass">
+          <div className="bypass-opt">
+            <div className="micro" style={{ marginBottom: 2 }}>New-hire only</div>
+            <PhaseBlock phase="Buildots Training" atStep={atStep} onChip={chip} small />
+            <PhaseBlock phase="Equipment Setup" atStep={atStep} onChip={chip} small />
+          </div>
+          <div className="bypass-lane">
+            <div style={{ fontSize: 22 }}>↳</div>
+            <div style={{ fontWeight: 700, fontSize: 13, margin: '4px 0' }}>Returning-tech fast path</div>
+            <div className="small">Skips Training + PPE — jumps straight from Signature to First Installation.</div>
+            <div style={{ fontSize: 22, marginTop: 6 }}>↓</div>
           </div>
         </div>
 
-        {/* Drill panel */}
-        {drill != null && (
-          <div className="card" style={{ flex: '1 1 40%', position: 'sticky', top: 76, minWidth: 300 }}>
-            <div className="card-head"><h3>Step {drill + 1}: {drillStep.name}</h3><button className="x" onClick={() => setDrill(null)}>×</button></div>
-            <div className="card-pad">
-              <div className="small muted" style={{ marginBottom: 10 }}>{drillProjects.length} project{drillProjects.length === 1 ? '' : 's'} currently at this step · {drillStep.office ? 'office-owned' : 'field (Regional Lead)'}</div>
-              {drillProjects.length === 0 && <div className="muted small">No projects sit here right now.</div>}
-              {drillProjects.map((p) => (
-                <div key={p.id} className="acard" style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => navigate('schedule', p.id)}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <b>{p.name}</b><StatusPill status={projectStatus(p)} /><span className="spacer" /><span className="go">open ↗</span>
-                  </div>
-                  <div className="small muted">{p.account} · {p.region} · {p.assignmentType} · {p.floors ?? '—'} floors</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <PhaseBlock phase="First Installation" atStep={atStep} onChip={chip} />
+        <Arrow />
+        <PhaseBlock phase="Operational Delivery" atStep={atStep} onChip={chip} />
+        <Arrow />
+        <PhaseBlock phase="Billing & Payments" atStep={atStep} onChip={chip} />
       </div>
 
-      {/* Bottleneck fixes */}
-      <div className="micro" style={{ margin: '22px 0 8px' }}>Three bottlenecks → fixes (process fix carries the weight; automation is a forward layer)</div>
+      <div className="micro" style={{ margin: '22px 0 8px' }}>Bottleneck insights → fixes</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        {[
-          { t: '1 · Readiness spine is serial', p: 'Parallelize OSHA10 / Training / Kit / PPE + write the SOP in Confluence', a: 'A "prep technician" Claude Code Skill fires the parallel gates (illustrative, not over-promised)' },
-          { t: '2 · Rebuilt from scratch', p: 'Geography-driven reuse: cluster per region, one-vendor-per-region', a: 'The tool surfaces same-region availability; no smart-matching pitch' },
-          { t: '3 · Disconnected tooling', p: 'Single source of truth = Jira + Confluence SOPs', a: 'Native Jira automation now; Claude Code MCP / Skills as the grow-into layer' },
-        ].map((b) => (
-          <div className="card card-pad" key={b.t}>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{b.t}</div>
-            <div className="small" style={{ marginBottom: 6 }}><span className="pill green">↻ process</span> {b.p}</div>
-            <div className="small"><span className="pill indigo">⚙ automate</span> {b.a}</div>
+        {INSIGHTS.map((b, i) => (
+          <div className="insight" key={i}>
+            <div className="insight-top"><div className="k">🔴 Bottleneck {i + 1} · the problem</div><div style={{ fontWeight: 600, marginTop: 5, fontSize: 13 }}>{b.problem}</div></div>
+            <div className="insight-body"><div className="k">↻ Proposed fix</div><div style={{ marginTop: 5, fontSize: 13 }}>{b.fix}</div><div className="small muted" style={{ marginTop: 8 }}><span className="pill indigo">⚙ automation</span> {b.detail}</div></div>
           </div>
         ))}
       </div>

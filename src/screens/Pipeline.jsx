@@ -43,7 +43,8 @@ export default function Pipeline() {
   const liquidity = funnelLiquidity(candidates);
   const scorecard = channelScorecard(technicians);
   const deployed = techs.filter((t) => t.pool === 'Active');
-  const pool = techs.filter((t) => t.pool !== 'Active');
+  const benched = techs.filter((t) => t.pool === 'Benched');
+  const removed = techs.filter((t) => t.pool === 'Removed');
 
   const openCand = (row) => setModal({ type: 'cand', row });
   const openTech = (row) => setModal({ type: 'tech', row });
@@ -65,20 +66,43 @@ export default function Pipeline() {
 
       <FilterBar filters={[{ key: 'channel', label: 'Channel', options: CHANNELS }, { key: 'region', label: 'Region', options: REGIONS }]} values={f} onChange={(k, v) => setF((s) => ({ ...s, [k]: v }))} />
 
-      {/* Kanban — candidates, drag to advance */}
-      <div className="kanban" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        {STAGES.map((s) => (
+      {/* Kanban — candidates flow left; deployed & sidelined technicians live in the last two columns */}
+      <div className="kanban" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: 20, alignItems: 'start' }}>
+        {['Sourced', 'Screened', 'Onboarded', 'Deployed'].map((s) => (
           <div className="kcol" key={s} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, s)}>
-            <div className="kcol-head"><span className="t">{s}</span><span className="pill grey">{cands.filter((c) => c.stage === s).length}</span></div>
+            <div className="kcol-head"><span className="t">{s}</span><span className="pill grey">{cands.filter((c) => c.stage === s).length + (s === 'Deployed' ? deployed.length : 0)}</span></div>
             {cands.filter((c) => c.stage === s).map((c) => (
               <div className="kcard" key={c.id} draggable onDragStart={(e) => e.dataTransfer.setData('id', c.id)} onClick={() => openCand(c)} style={isVendor(c.channel) ? { borderColor: '#5B4FE9', borderLeftWidth: 3 } : {}}>
                 <div className="n"><ProvDot provenance="fictive" /> {c.name}</div>
                 <div className="m">{isVendor(c.channel) ? <span className="pill indigo">Cloud Factory</span> : <span>{c.channel}</span>} · <span>{c.region}</span>{c.daysInStage != null && <span className="pill grey">{c.daysInStage}d</span>}</div>
               </div>
             ))}
-            {cands.filter((c) => c.stage === s).length === 0 && <div className="small muted" style={{ padding: 6 }}>drop here</div>}
+            {s === 'Deployed' && deployed.map((t) => (
+              <div className="kcard" key={t.id} onClick={() => openTech(t)}>
+                <div className="n"><ProvDot provenance="fictive" /> {t.name} <span className="pill green" style={{ fontSize: 9 }}>tech</span></div>
+                <div className="m"><span>{t.channel}</span> · <span>Q {qualityComposite(t.metrics)}</span> · <span>{t.projects?.length || 0} proj</span></div>
+              </div>
+            ))}
+            {cands.filter((c) => c.stage === s).length === 0 && !(s === 'Deployed' && deployed.length) && <div className="small muted" style={{ padding: 6 }}>drop here</div>}
           </div>
         ))}
+        <div className="kcol" style={{ background: '#FBF0E2' }}>
+          <div className="kcol-head"><span className="t">Benched</span><span className="pill grey">{benched.length}</span></div>
+          {benched.map((t) => (
+            <div className="kcard" key={t.id} onClick={() => openTech(t)}>
+              <div className="n"><ProvDot provenance="fictive" /> {t.name}</div>
+              <div className="m"><PoolPill pool="Benched" /> <span>Q {qualityComposite(t.metrics)}</span></div>
+            </div>
+          ))}
+          {benched.length === 0 && <div className="small muted" style={{ padding: 6 }}>none</div>}
+          <div className="micro" style={{ margin: '12px 0 6px' }}>Removed ({removed.length})</div>
+          {removed.map((t) => (
+            <div className="kcard" key={t.id} style={{ opacity: 0.6 }} onClick={() => openTech(t)}>
+              <div className="n"><ProvDot provenance="fictive" /> {t.name}</div>
+              <div className="m"><PoolPill pool="Removed" /> <span>Q {qualityComposite(t.metrics)}</span></div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Funnel / liquidity analysis */}
@@ -96,19 +120,6 @@ export default function Pipeline() {
             <div className="funnel-row"><span className="funnel-lbl">Deployed roster</span><div className="funnel-bar" style={{ width: `${(deployed.length / maxFunnel) * 100}%`, background: 'var(--bd-green)' }}>{deployed.length}</div><span className="small muted">active technicians serving projects</span></div>
           </div>
           <div className="small muted">Liquidity read: the pipeline is intentionally thin — <b>2 Cloud Factory pre-vets</b> backfilling the 2 churned Craigslist techs, no aging. The operation is staffed; new inflow is the vendor pilot, not mass Craigslist sourcing.</div>
-        </div>
-      </div>
-
-      {/* Roster + pool */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-head"><h3>Active roster &amp; pool</h3><span className="muted small">after first deploy, technicians live in the pool</span></div>
-        <div className="card-pad row wrap" style={{ gap: 10 }}>
-          {[...deployed, ...pool].map((t) => (
-            <div key={t.id} className="acard" style={{ width: 220, cursor: 'pointer' }} onClick={() => openTech(t)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ProvDot provenance="fictive" /><b>{t.name}</b><span className="spacer" /><PoolPill pool={t.pool} /></div>
-              <div className="small muted" style={{ marginTop: 3 }}>{t.channel} · {t.region} · Q {qualityComposite(t.metrics)}</div>
-            </div>
-          ))}
         </div>
       </div>
 

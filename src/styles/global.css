@@ -242,3 +242,42 @@ hr.sep { border: none; border-top: 1px solid var(--bd-border); margin: var(--s5)
 /* ---- feedback form ---- */
 .fb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .copytick { color: var(--bd-green); font-size: 12px; }
+
+/* ---- tile hover hint ---- */
+.tile.has-hint { cursor: default; }
+.tile-pop { display: none; position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 30; background: var(--bd-ink); color: #fff; border-radius: 8px; padding: 9px 11px; font-size: 12px; line-height: 1.45; box-shadow: var(--sh-modal); }
+.tile.has-hint:hover .tile-pop { display: block; }
+
+/* ---- smoother horizontal table scroll ---- */
+.table-scroll { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+.table-scroll .table th { position: static; }
+.table-scroll .table td, .table-scroll .table th { white-space: nowrap; }
+
+/* ---- process step chips (names inside the step) ---- */
+.wf2-step { flex-direction: column; align-items: stretch; gap: 6px; }
+.wf2-step .st-head { display: flex; align-items: center; gap: 8px; }
+.wf2-step .st-head .c { margin-left: auto; font-weight: 700; font-size: 13px; }
+.wf2-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.wf2-chip { font-size: 11px; font-weight: 600; background: #EEF0F2; border-radius: 10px; padding: 2px 8px; cursor: pointer; }
+.wf2-chip:hover { background: var(--bd-amber); color: var(--bd-amber-ink); }
+
+/* ---- returning-path bypass lane ---- */
+.bypass { display: flex; align-items: stretch; gap: 12px; margin: 4px 0 10px; }
+.bypass-lane { flex: 0 0 210px; border: 1px dashed var(--bd-indigo); border-radius: var(--r-card); background: #F4F2FD; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 14px; color: #4034b0; }
+.bypass-opt { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- bottleneck insight cards ---- */
+.insight { border: 1px solid var(--bd-border); border-radius: var(--r-card); background: var(--bd-surface); box-shadow: var(--sh-card); overflow: hidden; }
+.insight-top { padding: 12px 14px; background: #FBEFEC; border-bottom: 1px solid #F3D9D2; }
+.insight-top .k { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #b23524; }
+.insight-body { padding: 12px 14px; }
+.insight-body .k { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1f7a54; }
+
+/* ---- timeline legend tile ---- */
+.legend-tile { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; padding: 11px 16px; background: var(--bd-surface-alt); border: 1px solid var(--bd-border); border-radius: var(--r-card); margin-bottom: 12px; }
+.legend-tile .lk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--bd-ink-2); }
+
+/* ---- manage tab (assign tech, events) ---- */
+.tech-toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--bd-border-strong); border-radius: var(--r-pill); padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bd-surface); }
+.tech-toggle.on { background: var(--bd-amber); border-color: var(--bd-amber); color: var(--bd-amber-ink); }
+.tech-toggle.off:hover { border-color: var(--bd-ink-3); }

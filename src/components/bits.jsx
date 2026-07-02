@@ -27,12 +27,13 @@ export function Legend() {
   );
 }
 
-export function Tile({ label, value, sub, accent }) {
+export function Tile({ label, value, sub, accent, hint }) {
   return (
-    <div className={`tile ${accent ? 'accent ' + accent : ''}`}>
+    <div className={`tile ${accent ? 'accent ' + accent : ''} ${hint ? 'has-hint' : ''}`}>
       <div className="lbl">{label}</div>
       <div className="val mono-num">{value}</div>
       {sub && <div className="sub">{sub}</div>}
+      {hint && <div className="tile-pop">{hint}</div>}
     </div>
   );
 }
