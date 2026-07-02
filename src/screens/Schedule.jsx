@@ -16,13 +16,13 @@ const STATUS_ORDER = { critical: 0, atrisk: 1, ontrack: 2, na: 3 };
 const GLYPH = { done: '✓', doing: '◐', blocked: '✕', todo: '○', skipped: '⊘' };
 
 // inline-editable table cells
-const Sel = ({ value, options, onChange }) => <select className="cell-edit" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>;
+const Sel = ({ value, options, onChange, wide }) => <select className={`cell-edit ${wide ? 'wide' : ''}`} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>;
 const Num = ({ value, onChange }) => <input className="cell-edit num-edit" type="number" value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />;
 const DateC = ({ value, onChange }) => <input className="cell-edit" type="date" value={value || ''} onChange={(e) => onChange(e.target.value)} />;
 
 function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, onUpdate }) {
   const [tab, setTab] = useState('process');
-  const [openPhase, setOpenPhase] = useState(phaseOfProgress(project));
+  const [openPhases, setOpenPhases] = useState([phaseOfProgress(project)]);
   const [dField, setDField] = useState('Requested Delivery');
   const [dDate, setDDate] = useState('');
   const [cause, setCause] = useState(CAUSES[0]);
@@ -57,16 +57,25 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
 
         {tab === 'process' && (
           <div>
-            <div className="small muted" style={{ padding: '10px 24px 0' }}>Click a step to mark it done / blocked. Every change writes to History and recomputes the Readiness SLA.</div>
+            <div style={{ padding: '10px 24px 0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="small muted">Open any number of phases at once — parallel work is normal. Click a step to mark it done / blocked; it writes to History and recomputes readiness.</span>
+              <span className="spacer" />
+              <button className="btn-text btn-sm" onClick={() => setOpenPhases(PHASES)}>Expand all</button>
+              <button className="btn-text btn-sm" onClick={() => setOpenPhases([])}>Collapse all</button>
+            </div>
             {PHASES.map((phase) => {
               const steps = STEPS.filter((s) => s.phase === phase);
-              const expanded = openPhase === phase;
+              const expanded = openPhases.includes(phase);
+              const doneCount = steps.filter((s) => ['done', 'skipped'].includes(stepStatus(project, s.i))).length;
               return (
                 <div key={phase}>
                   {steps[0].i === BOUNDARY_STEP && <div className="boundary">▾ Handoff to the Regional Lead (Gil) · field execution ▾</div>}
                   <div className="phase">
-                    <div className="phase-head" onClick={() => setOpenPhase(expanded ? null : phase)}>
-                      <span className="ph-t">{phase}</span><span className="spacer" /><span className="small muted">{steps[0].office ? 'office' : 'field'}</span>
+                    <div className="phase-head" onClick={() => setOpenPhases((o) => o.includes(phase) ? o.filter((x) => x !== phase) : [...o, phase])}>
+                      <span style={{ color: 'var(--bd-ink-3)', fontSize: 12 }}>{expanded ? '▾' : '▸'}</span>
+                      <span className="ph-t">{phase}</span>
+                      <span className="pill grey">{doneCount}/{steps.length}</span>
+                      <span className="spacer" /><span className="small muted">{steps[0].office ? 'office' : 'field'}</span>
                     </div>
                     {expanded && (
                       <div className="phase-steps">
@@ -75,6 +84,7 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
                           return (
                             <div className="step" key={s.i} style={{ cursor: 'pointer' }} onClick={() => onToggleStep(s.i, st)} title="click to toggle done / blocked">
                               <span className={`glyph ${st}`} style={{ width: 18, height: 18, fontSize: 11 }}>{GLYPH[st]}</span>
+                              <span className="small muted mono-num" style={{ minWidth: 18 }}>{s.i + 1}.</span>
                               <span style={{ textDecoration: st === 'skipped' ? 'line-through' : 'none' }}>{s.name}</span>
                               {st === 'skipped' && <span className="small muted"> — returning tech</span>}
                             </div>
@@ -228,9 +238,9 @@ export default function Schedule() {
     const isDate = key === 'requestedDelivery' || key === 'projectEnd';
     applyUpdate(p.id, { [key]: value }, { field: label, old: p[key], new: value, delta: isDate ? (daysBetween(p[key], value) || 0) : 0, cause: 'Table edit', note: `${label} updated in table` });
   };
-  const editPhase = (p, phaseName) => {
-    const firstStep = STEPS.find((s) => s.phase === phaseName)?.i ?? 0;
-    applyUpdate(p.id, { progress: firstStep }, { field: 'Phase', old: phaseOfProgress(p), new: phaseName, cause: 'Table edit', note: `Moved to phase ${phaseName}` });
+  const editStep = (p, label) => {
+    const idx = parseInt(label, 10) - 1;
+    applyUpdate(p.id, { progress: idx }, { field: 'Step', old: `${(p.progress ?? 0) + 1}. ${STEPS[p.progress ?? 0].name}`, new: label, cause: 'Table edit', note: `Moved to step ${idx + 1}` });
   };
 
   const stepOptions = STEPS.map((s) => `${s.i + 1}. ${s.name}`);
@@ -315,33 +325,38 @@ export default function Schedule() {
           <div className="small muted" style={{ padding: '10px 14px 0' }}>Cells are editable inline — change region, phase, dates, floors, and more; every edit flows to the timeline, the Process board, and the project. Click a project name to open its full drawer.</div>
           <table className="table">
             <thead><tr>
-              <th>Project</th><th>Account</th><th>Region</th><th>Lead</th><th>Assign</th><th>Phase</th><th>Type</th><th className="num">Floors</th><th className="num">Bldgs</th><th className="num">Techs</th><th>Assigned</th><th>Channel</th><th>Owner</th><th>Training</th><th>Requested</th><th>Ready-by</th><th>Recruit-by</th><th>End</th><th className="num">%Ready</th><th>Status</th><th>Last change</th><th className="num">Vol</th>
+              <th>Project</th><th>Status</th><th>Account</th><th>Region</th><th>Lead</th><th>Assign</th><th>Step (of 24)</th><th>Type</th><th className="num">Floors</th><th className="num">Bldgs</th><th className="num">Techs</th><th>Assigned</th><th>Channel</th><th>Owner</th><th>Training</th><th>Requested</th><th>Ready-by</th><th>Recruit-by</th><th>End</th><th className="num">%Ready</th><th>Last change</th><th className="num">Vol</th>
             </tr></thead>
             <tbody>
-              {sorted.map((p) => (
-                <tr key={p.id}>
-                  <td><ProvDot provenance={p.provenance} /> <b className="rowlink" onClick={() => setDrawer(p.id)} style={{ textDecoration: 'underline dotted' }}>{p.name}</b></td>
-                  <td><input className="cell-edit" value={p.account} onChange={(e) => editCell(p, 'account', e.target.value, 'Account')} /></td>
-                  <td><Sel value={p.region} options={REGIONS} onChange={(v) => editCell(p, 'region', v, 'Region')} /></td>
-                  <td>Gil</td>
-                  <td><Sel value={p.assignmentType} options={['New-hire', 'Returning']} onChange={(v) => editCell(p, 'assignmentType', v, 'Assignment')} /></td>
-                  <td><Sel value={phaseOfProgress(p)} options={PHASES} onChange={(v) => editPhase(p, v)} /></td>
-                  <td><Sel value={p.type} options={TYPES} onChange={(v) => editCell(p, 'type', v, 'Type')} /></td>
-                  <td><Num value={p.floors} onChange={(v) => editCell(p, 'floors', v, 'Floors')} /></td>
-                  <td><Num value={p.buildings} onChange={(v) => editCell(p, 'buildings', v, 'Buildings')} /></td>
-                  <td className="num">{techniciansNeeded(p)}</td>
-                  <td className="small">{assignedNames(p, technicians).join(', ') || '—'}</td>
-                  <td><Sel value={p.channel} options={CHANNELS} onChange={(v) => editCell(p, 'channel', v, 'Channel')} /></td>
-                  <td>{p.owner}</td>
-                  <td><Sel value={p.training || 'Not Done'} options={['Not Done', 'Done']} onChange={(v) => editCell(p, 'training', v, 'Training')} /></td>
-                  <td><DateC value={p.requestedDelivery} onChange={(v) => editCell(p, 'requestedDelivery', v, 'Requested delivery')} /></td>
-                  <td>{fmtDate(readinessBy(p))}</td><td>{fmtDate(recruitBy(p))}</td>
-                  <td><DateC value={p.projectEnd} onChange={(v) => editCell(p, 'projectEnd', v, 'Project end')} /></td>
-                  <td className="num">{readinessPct(p)}%</td>
-                  <td><StatusPill status={projectStatus(p)} /></td>
-                  <td>{changeBadge(p)}</td><td className="num">{p.changeCount || 0}</td>
-                </tr>
-              ))}
+              {sorted.map((p) => {
+                const sc = projectStatus(p);
+                const dotCls = sc === 'ontrack' ? 'green' : sc === 'atrisk' ? 'amber' : sc === 'critical' ? 'red' : 'grey';
+                const names = assignedNames(p, technicians);
+                return (
+                  <tr key={p.id}>
+                    <td><span className={`dot-s ${dotCls}`} /> <b className="rowlink" onClick={() => setDrawer(p.id)} style={{ textDecoration: 'underline dotted' }}>{p.name}</b></td>
+                    <td><StatusPill status={sc} /></td>
+                    <td><input className="cell-edit" value={p.account} onChange={(e) => editCell(p, 'account', e.target.value, 'Account')} /></td>
+                    <td><Sel value={p.region} options={REGIONS} onChange={(v) => editCell(p, 'region', v, 'Region')} /></td>
+                    <td>Gil</td>
+                    <td><Sel value={p.assignmentType} options={['New-hire', 'Returning']} onChange={(v) => editCell(p, 'assignmentType', v, 'Assignment')} /></td>
+                    <td><Sel wide value={`${(p.progress ?? 0) + 1}. ${STEPS[p.progress ?? 0].name}`} options={stepOptions} onChange={(v) => editStep(p, v)} /></td>
+                    <td><Sel value={p.type} options={TYPES} onChange={(v) => editCell(p, 'type', v, 'Type')} /></td>
+                    <td><Num value={p.floors} onChange={(v) => editCell(p, 'floors', v, 'Floors')} /></td>
+                    <td><Num value={p.buildings} onChange={(v) => editCell(p, 'buildings', v, 'Buildings')} /></td>
+                    <td className="num">{techniciansNeeded(p)}</td>
+                    <td>{names.length ? names.map((n) => <span key={n} className="pill grey" style={{ marginRight: 4 }}>{n}</span>) : '—'}</td>
+                    <td><Sel value={p.channel} options={CHANNELS} onChange={(v) => editCell(p, 'channel', v, 'Channel')} /></td>
+                    <td>{p.owner}</td>
+                    <td><Sel value={p.training || 'Not Done'} options={['Not Done', 'Done']} onChange={(v) => editCell(p, 'training', v, 'Training')} /></td>
+                    <td><DateC value={p.requestedDelivery} onChange={(v) => editCell(p, 'requestedDelivery', v, 'Requested delivery')} /></td>
+                    <td>{fmtDate(readinessBy(p))}</td><td>{fmtDate(recruitBy(p))}</td>
+                    <td><DateC value={p.projectEnd} onChange={(v) => editCell(p, 'projectEnd', v, 'Project end')} /></td>
+                    <td className="num">{readinessPct(p)}%</td>
+                    <td>{changeBadge(p)}</td><td className="num">{p.changeCount || 0}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

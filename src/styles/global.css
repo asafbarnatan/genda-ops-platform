@@ -289,7 +289,8 @@ hr.sep { border: none; border-top: 1px solid var(--bd-border); margin: var(--s5)
 .cell-edit:hover { border-color: var(--bd-border-strong); background: #fff; }
 .cell-edit:focus { border-color: var(--bd-amber); background: #fff; outline: none; }
 .cell-edit.num-edit { max-width: 66px; text-align: right; }
-select.cell-edit { -webkit-appearance: menulist; appearance: menulist; }
+.cell-edit.wide { min-width: 210px; }
+select.cell-edit { -webkit-appearance: none; appearance: none; padding-right: 22px; min-width: 92px; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236B6C6E' stroke-width='3' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 6px center; }
 
 /* ---- manage tab (assign tech, events) ---- */
 .tech-toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--bd-border-strong); border-radius: var(--r-pill); padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bd-surface); }
