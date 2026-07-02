@@ -284,6 +284,13 @@ hr.sep { border: none; border-top: 1px solid var(--bd-border); margin: var(--s5)
 .legend-tile { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; padding: 11px 16px; background: var(--bd-surface-alt); border: 1px solid var(--bd-border); border-radius: var(--r-card); margin-bottom: 12px; }
 .legend-tile .lk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--bd-ink-2); }
 
+/* ---- inline-editable table cells ---- */
+.cell-edit { border: 1px solid transparent; background: transparent; font: inherit; font-size: 13px; color: var(--bd-ink); padding: 3px 5px; border-radius: 4px; width: 100%; min-width: 64px; cursor: pointer; }
+.cell-edit:hover { border-color: var(--bd-border-strong); background: #fff; }
+.cell-edit:focus { border-color: var(--bd-amber); background: #fff; outline: none; }
+.cell-edit.num-edit { max-width: 66px; text-align: right; }
+select.cell-edit { -webkit-appearance: menulist; appearance: menulist; }
+
 /* ---- manage tab (assign tech, events) ---- */
 .tech-toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--bd-border-strong); border-radius: var(--r-pill); padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bd-surface); }
 .tech-toggle.on { background: var(--bd-amber); border-color: var(--bd-amber); color: var(--bd-amber-ink); }

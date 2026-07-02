@@ -10,8 +10,15 @@ import { EntityModal } from '../components/Modal.jsx';
 
 const REGIONS = ['Texas', 'Southeast', 'West'];
 const CAUSES = ['Construction ahead', 'Construction behind', 'Client update', 'Site access', 'Internal reschedule'];
+const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud Factory'];
+const TYPES = ['Residential', 'Healthcare', 'Commercial', 'Education'];
 const STATUS_ORDER = { critical: 0, atrisk: 1, ontrack: 2, na: 3 };
 const GLYPH = { done: '✓', doing: '◐', blocked: '✕', todo: '○', skipped: '⊘' };
+
+// inline-editable table cells
+const Sel = ({ value, options, onChange }) => <select className="cell-edit" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>;
+const Num = ({ value, onChange }) => <input className="cell-edit num-edit" type="number" value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />;
+const DateC = ({ value, onChange }) => <input className="cell-edit" type="date" value={value || ''} onChange={(e) => onChange(e.target.value)} />;
 
 function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, onUpdate }) {
   const [tab, setTab] = useState('process');
@@ -217,6 +224,14 @@ export default function Schedule() {
     if (next === undefined) delete stepState[i]; else stepState[i] = next;
     applyUpdate(projId, { stepState }, { field: `Step: ${STEPS[i].name}`, old: current, new: next || 'default', cause: 'Manual update', note: `Marked ${next || 'reset'}` });
   };
+  const editCell = (p, key, value, label) => {
+    const isDate = key === 'requestedDelivery' || key === 'projectEnd';
+    applyUpdate(p.id, { [key]: value }, { field: label, old: p[key], new: value, delta: isDate ? (daysBetween(p[key], value) || 0) : 0, cause: 'Table edit', note: `${label} updated in table` });
+  };
+  const editPhase = (p, phaseName) => {
+    const firstStep = STEPS.find((s) => s.phase === phaseName)?.i ?? 0;
+    applyUpdate(p.id, { progress: firstStep }, { field: 'Phase', old: phaseOfProgress(p), new: phaseName, cause: 'Table edit', note: `Moved to phase ${phaseName}` });
+  };
 
   const stepOptions = STEPS.map((s) => `${s.i + 1}. ${s.name}`);
   const projFields = [
@@ -297,22 +312,32 @@ export default function Schedule() {
         </>
       ) : (
         <div className="card table-scroll">
+          <div className="small muted" style={{ padding: '10px 14px 0' }}>Cells are editable inline — change region, phase, dates, floors, and more; every edit flows to the timeline, the Process board, and the project. Click a project name to open its full drawer.</div>
           <table className="table">
             <thead><tr>
-              <th>Project</th><th>Account</th><th>Region</th><th>Lead</th><th>Assign</th><th>Stage</th><th>Type</th><th className="num">Floors</th><th className="num">Bldgs</th><th className="num">Techs</th><th>Assigned</th><th>Channel</th><th>Owner</th><th>Training</th><th>Requested</th><th>Ready-by</th><th>Recruit-by</th><th>End</th><th>Phase</th><th className="num">%Ready</th><th>Status</th><th>Last change</th><th className="num">Vol</th>
+              <th>Project</th><th>Account</th><th>Region</th><th>Lead</th><th>Assign</th><th>Phase</th><th>Type</th><th className="num">Floors</th><th className="num">Bldgs</th><th className="num">Techs</th><th>Assigned</th><th>Channel</th><th>Owner</th><th>Training</th><th>Requested</th><th>Ready-by</th><th>Recruit-by</th><th>End</th><th className="num">%Ready</th><th>Status</th><th>Last change</th><th className="num">Vol</th>
             </tr></thead>
             <tbody>
               {sorted.map((p) => (
-                <tr key={p.id} className="rowlink" onClick={() => setDrawer(p.id)}>
-                  <td><ProvDot provenance={p.provenance} /> <b>{p.name}</b></td>
-                  <td>{p.account}</td><td>{p.region}</td><td>Gil</td>
-                  <td>{p.assignmentType === 'Returning' ? <span className="pill green">Returning</span> : <span className="pill grey">New-hire</span>}</td>
-                  <td>{p.stage}</td><td>{p.type}</td>
-                  <td className="num">{p.floors}</td><td className="num">{p.buildings}</td><td className="num">{techniciansNeeded(p)}</td>
-                  <td>{assignedNames(p, technicians).join(', ') || '—'}</td>
-                  <td>{p.channel}</td><td>{p.owner}</td><td>{p.training || '—'}</td>
-                  <td>{fmtDate(p.requestedDelivery)}</td><td>{fmtDate(readinessBy(p))}</td><td>{fmtDate(recruitBy(p))}</td><td>{fmtDate(p.projectEnd)}</td>
-                  <td>{phaseOfProgress(p)}</td><td className="num">{readinessPct(p)}%</td>
+                <tr key={p.id}>
+                  <td><ProvDot provenance={p.provenance} /> <b className="rowlink" onClick={() => setDrawer(p.id)} style={{ textDecoration: 'underline dotted' }}>{p.name}</b></td>
+                  <td><input className="cell-edit" value={p.account} onChange={(e) => editCell(p, 'account', e.target.value, 'Account')} /></td>
+                  <td><Sel value={p.region} options={REGIONS} onChange={(v) => editCell(p, 'region', v, 'Region')} /></td>
+                  <td>Gil</td>
+                  <td><Sel value={p.assignmentType} options={['New-hire', 'Returning']} onChange={(v) => editCell(p, 'assignmentType', v, 'Assignment')} /></td>
+                  <td><Sel value={phaseOfProgress(p)} options={PHASES} onChange={(v) => editPhase(p, v)} /></td>
+                  <td><Sel value={p.type} options={TYPES} onChange={(v) => editCell(p, 'type', v, 'Type')} /></td>
+                  <td><Num value={p.floors} onChange={(v) => editCell(p, 'floors', v, 'Floors')} /></td>
+                  <td><Num value={p.buildings} onChange={(v) => editCell(p, 'buildings', v, 'Buildings')} /></td>
+                  <td className="num">{techniciansNeeded(p)}</td>
+                  <td className="small">{assignedNames(p, technicians).join(', ') || '—'}</td>
+                  <td><Sel value={p.channel} options={CHANNELS} onChange={(v) => editCell(p, 'channel', v, 'Channel')} /></td>
+                  <td>{p.owner}</td>
+                  <td><Sel value={p.training || 'Not Done'} options={['Not Done', 'Done']} onChange={(v) => editCell(p, 'training', v, 'Training')} /></td>
+                  <td><DateC value={p.requestedDelivery} onChange={(v) => editCell(p, 'requestedDelivery', v, 'Requested delivery')} /></td>
+                  <td>{fmtDate(readinessBy(p))}</td><td>{fmtDate(recruitBy(p))}</td>
+                  <td><DateC value={p.projectEnd} onChange={(v) => editCell(p, 'projectEnd', v, 'Project end')} /></td>
+                  <td className="num">{readinessPct(p)}%</td>
                   <td><StatusPill status={projectStatus(p)} /></td>
                   <td>{changeBadge(p)}</td><td className="num">{p.changeCount || 0}</td>
                 </tr>

@@ -9,10 +9,11 @@ function TileDetail({ d, onGo, onClose }) {
   return (
     <Modal title={d.title} onClose={onClose}
       footer={<><button className="btn-text" onClick={onClose}>Close</button>{d.link && <button className="btn btn-primary" onClick={() => onGo(d.link.screen)}>{d.link.label} ↗</button>}</>}>
+      {(d.why || d.note) && <div style={{ fontSize: 13, color: 'var(--bd-ink-2)', marginBottom: 14, lineHeight: 1.5 }}><b>Why it matters:</b> {d.why || d.note}</div>}
       <div style={{ fontSize: 34, fontWeight: 700 }} className="mono-num">{d.value}</div>
       <div className="micro" style={{ margin: '14px 0 4px' }}>How it's computed</div>
       <div className="small">{d.formula}</div>
-      {d.note && <div className="small muted" style={{ marginTop: 6 }}>{d.note}</div>}
+      {d.why && d.note && <div className="small muted" style={{ marginTop: 6 }}>{d.note}</div>}
       {d.items && d.items.length > 0 && (
         <>
           <div className="micro" style={{ margin: '16px 0 4px' }}>What feeds it</div>
@@ -68,20 +69,21 @@ export default function MissionControl() {
   const DETAILS = {
     customer: {
       title: 'Customer SLA adherence', value: `${m.customerSlaAdherence}%`, link: { screen: 'schedule', label: 'Open the Schedule' },
+      why: 'This is the promise made to the client. Missing a committed delivery date is the fastest way to lose their trust and future work — it is the number the whole operation exists to protect.',
       formula: `Projects delivered on or before the committed date ÷ all active projects = ${aps.length - overdueList.length} of ${aps.length}.`,
-      note: 'The external promise: did we hit the date the client was given? A single miss (27th Street) drops us below 100%.',
+      note: 'A single miss (27th Street) drops us below 100%.',
       items: aps.map((p) => ({ name: p.name, note: projectStatus(p) === 'critical' ? 'missed / overdue' : 'on track to meet the date', bad: projectStatus(p) === 'critical', focus: p.id })),
     },
     dropped: {
       title: 'Dropped opportunities', value: m.droppedOpportunities, link: { screen: 'schedule', label: 'Open the Schedule' },
+      why: 'A dropped opportunity is revenue and client trust lost by missing the committed date. The target is zero — one is already one too many.',
       formula: `Projects past their Requested Delivery date and not delivered. Count = ${overdueList.length}.`,
-      note: 'Each is a client-facing miss. Target is zero.',
       items: overdueList.length ? overdueList.map((p) => ({ name: p.name, note: `delivery ${p.requestedDelivery} has passed`, bad: true, focus: p.id })) : [{ name: 'None', note: 'no projects overdue', bad: false }],
     },
     readiness: {
       title: 'Readiness SLA (internal)', value: `${m.readinessSlaAdherence}%`, link: { screen: 'schedule', label: 'Open the Schedule' },
+      why: 'Being ready early is what makes the customer date safe. This internal buffer absorbs surprises before the client ever feels them — the leading indicator behind the headline KPI.',
       formula: 'Of projects due soon, the share on pace to be ready ≥10 business days before delivery (not Critical).',
-      note: 'Internal leading indicator that protects the customer SLA.',
       items: atRiskList.map((p) => ({ name: p.name, note: `${projectStatus(p) === 'critical' ? 'critical' : 'at risk'} — dragging it down`, bad: projectStatus(p) === 'critical', warn: projectStatus(p) === 'atrisk', focus: p.id })),
     },
     readyTech: {
