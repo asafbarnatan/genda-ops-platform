@@ -1,5 +1,7 @@
 # Genda Ops — Buildots Operations Manager platform (mockup)
 
+**▶ Live demo: https://genda-ops-platform.vercel.app**
+
 An interactive mockup of the **ideal Jira workspace** for the Genda beacon-installation
 operation, built for the Buildots Operations Manager home assignment. It renders a full
 operating system across six areas, driven by a strategy layer and a data layer.
