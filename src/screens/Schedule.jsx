@@ -21,13 +21,15 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
   const [cause, setCause] = useState(CAUSES[0]);
   const [visit, setVisit] = useState('');
   const [evt, setEvt] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
   const names = assignedNames(project, technicians);
   const roster = activeTechs(technicians);
+  const doUpdate = (patch, log) => { onUpdate(patch, log); setSavedMsg('✓ Saved to the project'); setTimeout(() => setSavedMsg(''), 1800); };
 
   const applyDate = () => {
     if (!dDate) return;
     const key = dField === 'Requested Delivery' ? 'requestedDelivery' : 'projectEnd';
-    onUpdate({ [key]: dDate }, { field: dField, old: project[key], new: dDate, delta: daysBetween(project[key], dDate) || 0, cause, note: 'Date changed via Manage' });
+    doUpdate({ [key]: dDate }, { field: dField, old: project[key], new: dDate, delta: daysBetween(project[key], dDate) || 0, cause, note: 'Date changed via Manage' });
     setDDate('');
   };
 
@@ -82,14 +84,20 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
 
         {tab === 'manage' && (
           <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div className="small muted" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              Every change here saves instantly and flows to the timeline, table, alerts, and Mission Control — no separate save needed.
+              {savedMsg && <span className="pill green">{savedMsg}</span>}
+            </div>
+
             <div>
-              <div className="micro" style={{ marginBottom: 7 }}>Assign / change technicians ({techniciansNeeded(project)} needed)</div>
+              <div className="micro" style={{ marginBottom: 4 }}>Assign / change technicians · {techniciansNeeded(project)} needed</div>
+              <div className="small muted" style={{ marginBottom: 7 }}>Click a name to toggle it on / off. ✓ = assigned to this project · "travel" = a different region than the site.</div>
               <div className="row wrap" style={{ gap: 8 }}>
                 {roster.map((t) => {
                   const on = project.assignedTechs?.includes(t.id);
                   const sameRegion = t.region === project.region;
                   return (
-                    <button key={t.id} className={`tech-toggle ${on ? 'on' : 'off'}`} onClick={() => onUpdate({ assignedTechs: on ? project.assignedTechs.filter((x) => x !== t.id) : [...(project.assignedTechs || []), t.id] }, { field: 'Assignment', old: '', new: t.name, cause: 'Manual', note: `${on ? 'Unassigned' : 'Assigned'} ${t.name}` })}>
+                    <button key={t.id} className={`tech-toggle ${on ? 'on' : 'off'}`} onClick={() => doUpdate({ assignedTechs: on ? project.assignedTechs.filter((x) => x !== t.id) : [...(project.assignedTechs || []), t.id] }, { field: 'Assignment', old: '', new: t.name, cause: 'Manual', note: `${on ? 'Unassigned' : 'Assigned'} ${t.name}` })}>
                       {on ? '✓ ' : '+ '}{t.name}<span className="small muted" style={{ marginLeft: 4 }}>{sameRegion ? t.region : `${t.region} · travel`}</span>
                     </button>
                   );
@@ -98,30 +106,32 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
             </div>
 
             <div>
-              <div className="micro" style={{ marginBottom: 7 }}>Change a date — logs the cause and recomputes risk</div>
-              <div className="row wrap" style={{ gap: 8, alignItems: 'center' }}>
-                <select className="input" value={dField} onChange={(e) => setDField(e.target.value)}><option>Requested Delivery</option><option>Project End</option></select>
-                <input className="input" type="date" value={dDate} onChange={(e) => setDDate(e.target.value)} />
-                <select className="input" value={cause} onChange={(e) => setCause(e.target.value)}>{CAUSES.map((c) => <option key={c}>{c}</option>)}</select>
-                <button className="btn btn-primary btn-sm" onClick={applyDate}>Apply</button>
+              <div className="micro" style={{ marginBottom: 4 }}>Change a date</div>
+              <div className="small muted" style={{ marginBottom: 7 }}>Pick which date to move, the new date, and the reason. "Apply" saves it, logs the cause to History, and recomputes risk.</div>
+              <div className="row wrap" style={{ gap: 10, alignItems: 'flex-end' }}>
+                <div className="field"><label>Which date</label><select className="input" value={dField} onChange={(e) => setDField(e.target.value)}><option>Requested Delivery</option><option>Project End</option></select></div>
+                <div className="field"><label>New date</label><input className="input" type="date" value={dDate} onChange={(e) => setDDate(e.target.value)} /></div>
+                <div className="field"><label>Reason (cause)</label><select className="input" value={cause} onChange={(e) => setCause(e.target.value)}>{CAUSES.map((c) => <option key={c}>{c}</option>)}</select></div>
+                <button className="btn btn-primary" onClick={applyDate}>Apply change</button>
               </div>
             </div>
 
             <div>
-              <div className="micro" style={{ marginBottom: 7 }}>Visits</div>
-              <div className="small muted">Quarterly recurring: {recurringVisits(project).length} visits · next {fmtDate(recurringVisits(project)[0])}</div>
-              <div className="row" style={{ gap: 8, marginTop: 7 }}>
-                <input className="input" type="date" value={visit} onChange={(e) => setVisit(e.target.value)} />
-                <button className="btn btn-sm" onClick={() => { if (visit) { onUpdate({ extraVisits: [...(project.extraVisits || []), visit] }, { field: 'Visit', new: visit, cause: 'Manual', note: 'Ad-hoc visit scheduled' }); setVisit(''); } }}>+ Ad-hoc visit</button>
+              <div className="micro" style={{ marginBottom: 4 }}>Visits</div>
+              <div className="small muted">Quarterly recurring: {recurringVisits(project).length} visits · next {fmtDate(recurringVisits(project)[0])}. Add an ad-hoc visit below.</div>
+              <div className="row" style={{ gap: 8, marginTop: 7, alignItems: 'flex-end' }}>
+                <div className="field"><label>Ad-hoc visit date</label><input className="input" type="date" value={visit} onChange={(e) => setVisit(e.target.value)} /></div>
+                <button className="btn" onClick={() => { if (visit) { doUpdate({ extraVisits: [...(project.extraVisits || []), visit] }, { field: 'Visit', new: visit, cause: 'Manual', note: 'Ad-hoc visit scheduled' }); setVisit(''); } }}>+ Add visit</button>
               </div>
               <div className="row wrap" style={{ gap: 6, marginTop: 7 }}>{(project.extraVisits || []).map((v) => <span className="pill grey" key={v}>{fmtDate(v)}</span>)}</div>
             </div>
 
             <div>
-              <div className="micro" style={{ marginBottom: 7 }}>Log a project event</div>
+              <div className="micro" style={{ marginBottom: 4 }}>Log a project event</div>
+              <div className="small muted" style={{ marginBottom: 7 }}>Free-text note — e.g. a call from the site PM. Saved to the History log with a timestamp.</div>
               <div className="row" style={{ gap: 8 }}>
                 <input className="input" style={{ flex: 1 }} placeholder="e.g. PM called — finish floor 18 in April once built" value={evt} onChange={(e) => setEvt(e.target.value)} />
-                <button className="btn btn-primary btn-sm" onClick={() => { if (evt.trim()) { onUpdate({}, { field: 'Event', new: '', cause: 'Note', note: evt.trim() }); setEvt(''); } }}>Add event</button>
+                <button className="btn btn-primary" onClick={() => { if (evt.trim()) { doUpdate({}, { field: 'Event', new: '', cause: 'Note', note: evt.trim() }); setEvt(''); } }}>Add event</button>
               </div>
             </div>
           </div>
@@ -248,14 +258,18 @@ export default function Schedule() {
       {view === 'timeline' ? (
         <>
           <div className="legend-tile">
-            <span className="micro" style={{ letterSpacing: '0.05em' }}>Legend</span>
-            <span className="lk">★ Ready-by (SLA)</span>
-            <span className="lk">▲ Requested Delivery / First Installation</span>
-            <span className="lk">◆ First Upload</span>
-            <span className="lk">● Quarterly recurring visit</span>
-            <span className="lk">◇ Previous date (ghost)</span>
-            <span className="lk">↩ Returning-tech (short runway)</span>
-            <span className="lk"><span className="dot-s green" /> On track <span className="dot-s amber" style={{ marginLeft: 8 }} /> At risk <span className="dot-s red" style={{ marginLeft: 8 }} /> Critical</span>
+            <span className="micro" style={{ letterSpacing: '0.05em' }}>Milestones</span>
+            <span className="lk"><b style={{ color: 'var(--bd-indigo)' }}>★</b> Ready-by (SLA)</span>
+            <span className="lk"><b>▲</b> Requested Delivery / First Installation</span>
+            <span className="lk"><b>◆</b> First Upload</span>
+            <span className="lk"><span className="dot-s grey" /> Quarterly recurring visit</span>
+            <span className="lk"><span style={{ opacity: 0.4 }}>◇</span> Previous date (ghost)</span>
+            <span className="lk"><span className="pill green" style={{ fontSize: 9, padding: '1px 6px' }}>↩</span> Returning-tech</span>
+            <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--bd-border)', margin: '0 4px' }} />
+            <span className="micro" style={{ letterSpacing: '0.05em' }}>Status</span>
+            <span className="lk"><span className="dot-s green" /> On track</span>
+            <span className="lk"><span className="dot-s amber" /> At risk</span>
+            <span className="lk"><span className="dot-s red" /> Critical</span>
           </div>
           <div className="card card-pad">
             <div className="tl-axis"><div /><div className="ticks">{years.map((y) => <span key={y}>{y}</span>)}</div></div>
@@ -287,7 +301,7 @@ export default function Schedule() {
         <div className="card table-scroll">
           <table className="table">
             <thead><tr>
-              <th>Project</th><th>Account</th><th>Region</th><th>Lead</th><th>Assign</th><th>Stage</th><th>Type</th><th className="num">Floors</th><th className="num">Bldgs</th><th className="num">Techs</th><th>Assigned</th><th>Channel</th><th>Owner</th><th className="num">Cand.</th><th>Training</th><th>Requested</th><th>Ready-by</th><th>Recruit-by</th><th>End</th><th>Phase</th><th className="num">%Ready</th><th>Status</th><th>Last change</th><th className="num">Vol</th>
+              <th>Project</th><th>Account</th><th>Region</th><th>Lead</th><th>Assign</th><th>Stage</th><th>Type</th><th className="num">Floors</th><th className="num">Bldgs</th><th className="num">Techs</th><th>Assigned</th><th>Channel</th><th>Owner</th><th>Training</th><th>Requested</th><th>Ready-by</th><th>Recruit-by</th><th>End</th><th>Phase</th><th className="num">%Ready</th><th>Status</th><th>Last change</th><th className="num">Vol</th>
             </tr></thead>
             <tbody>
               {sorted.map((p) => (
@@ -298,7 +312,7 @@ export default function Schedule() {
                   <td>{p.stage}</td><td>{p.type}</td>
                   <td className="num">{p.floors}</td><td className="num">{p.buildings}</td><td className="num">{techniciansNeeded(p)}</td>
                   <td>{assignedNames(p, technicians).join(', ') || '—'}</td>
-                  <td>{p.channel}</td><td>{p.owner}</td><td className="num">{p.candidateScore ?? '—'}</td><td>{p.training || '—'}</td>
+                  <td>{p.channel}</td><td>{p.owner}</td><td>{p.training || '—'}</td>
                   <td>{fmtDate(p.requestedDelivery)}</td><td>{fmtDate(readinessBy(p))}</td><td>{fmtDate(recruitBy(p))}</td><td>{fmtDate(p.projectEnd)}</td>
                   <td>{phaseOfProgress(p)}</td><td className="num">{readinessPct(p)}%</td>
                   <td><StatusPill status={projectStatus(p)} /></td>

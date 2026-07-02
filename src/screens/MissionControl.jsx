@@ -52,33 +52,33 @@ export default function MissionControl() {
         <Tile label="Pipeline" value={m.candidates} sub="Cloud Factory vendor pilot" />
       </div>
 
-      <div className="micro" style={{ margin: '6px 0 8px' }}>North-star KPI</div>
+      <div className="micro" style={{ margin: '6px 0 8px' }}>North-star KPI — Roee's #1: on-time delivery to the client</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 18 }}>
-        <Tile accent={m.readinessSlaAdherence >= 90 ? 'green' : 'amber'} label="Readiness SLA adherence" value={`${m.readinessSlaAdherence}%`} sub="ready ≥10 business days before delivery"
-          hint="Share of near-term projects on pace to be fully ready at least 10 business days before their Requested Delivery Date. This is the operation's headline promise." />
-        <Tile accent={m.droppedOpportunities === 0 ? 'green' : 'red'} label="Overdue & not ready" value={m.droppedOpportunities} sub="past Requested Delivery, still open"
-          hint={`Projects past their Requested Delivery and not yet delivered — currently ${m.droppedOpportunities} (27th Street), derived from its provided delivery date. Maps to Roee's 'zero dropped opportunities' goal.`} />
-        <Tile accent="indigo" label="% returning deployments" value={`${m.pctReturning}%`} sub="reuse vs new-hire — the scalability lever"
-          hint="Share of deployments served by a returning technician (fast path) instead of a new hire. Higher = more reuse = faster, cheaper scaling. The vendor pilot is how we grow it." />
+        <Tile accent={m.customerSlaAdherence >= 95 ? 'green' : 'amber'} label="Customer SLA adherence" value={`${m.customerSlaAdherence}%`} sub="delivered on the date committed to the client"
+          hint="Roee's #1 KPI from the interview: the share of projects delivered on (or before) the date committed to the client. This is the external promise every other metric protects." />
+        <Tile accent={m.droppedOpportunities === 0 ? 'green' : 'red'} label="Dropped opportunities" value={m.droppedOpportunities} sub="missed the delivery date · target 0"
+          hint={`The other half of Roee's #1 KPI: opportunities lost by missing the committed date. Currently ${m.droppedOpportunities} (27th Street), from its provided delivery date. Target is zero.`} />
+        <Tile accent="indigo" label="Readiness SLA (internal)" value={`${m.readinessSlaAdherence}%`} sub="secondary — ready ≥10 days early"
+          hint="Our internal early-warning metric: ready at least 10 business days before delivery. Important, but secondary — it is the leading indicator that protects the customer SLA on the left." />
       </div>
 
       <div className="micro" style={{ margin: '6px 0 8px' }}>Operational health</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 18 }}>
         <Tile label="Ready-tech coverage" value={`${m.techActive} ready`} sub="active roster vs near-term demand"
           hint="Active technicians available to deploy. Reused across projects, so this is smaller than the number of project slots — utilization, not headcount." />
+        <Tile accent="indigo" label="% returning deployments" value={`${m.pctReturning}%`} sub="reuse vs new-hire — the scalability lever"
+          hint="Share of deployments served by a returning technician (fast path) instead of a new hire. Higher = faster, cheaper scaling. The vendor pilot is how we grow it." />
         <Tile accent={m.atRisk > 2 ? 'amber' : 'green'} label="Projects at risk" value={m.atRisk} sub="amber + red, floated to the top"
           hint="Projects that are At risk (inside the readiness buffer) or Critical (overdue / no ready tech). These float to the top of the Schedule." />
         <Tile label="Avg technician quality" value={m.avgQuality} sub={`weighted 1-5 · ${m.flagged} flagged for review`}
           hint="Weighted average of the active roster's composite quality scores (Coverage 30 / Reliability 25 / On-time 20 / Upload 15 / Issues 10)." />
-        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>Readiness spine</span>} sub="most projects queue at Training → Kit"
-          hint="The phase where projects dwell longest before deploying (OSHA10 → Training → Kit → PPE). The target for standardization + automation in Process." />
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>Readiness spine</span>} sub="most projects queue at Training → Kit"
+          hint="The phase where projects dwell longest before deploying (OSHA10 → Training → Kit → PPE). The target for standardization + automation in Process." />
         <Tile accent="red" label="Alerts · critical" value={m.alertCritical} sub="act now, ~24-48h" hint="Alerts that hit a client outcome or breach the Readiness SLA. Act within 24-48h." />
         <Tile accent="amber" label="Alerts · action" value={m.alertAction} sub="handle this week" hint="Real issues you own the timing on — handle within the week." />
         <Tile accent="green" label="Alerts · info" value={m.alertInfo} sub="monitor only" hint="Awareness only, no action needed — e.g. a routine date change that auto-propagated." />
-        <Tile label="Biggest pipeline leak" value={<span style={{ fontSize: 15 }}>Craigslist</span>} sub="50% churn → costly per ready tech"
-          hint="The channel losing the most technicians to churn. Craigslist floods cheap leads but 2 of 4 washed out — expensive per ready tech. The case for the vendor model." />
       </div>
 
       {isOM ? (

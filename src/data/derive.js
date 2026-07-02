@@ -144,9 +144,12 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
   const alerts = deriveAlerts(projects, technicians, today);
   const tierCount = (tier) => alerts.filter((a) => a.tier === tier).length;
   const adherence = due.length ? Math.round((due.filter((p) => projectStatus(p, today) !== 'critical').length / due.length) * 100) : 100;
+  // Customer (Account) SLA = delivered on the date committed to the client — the headline KPI
+  const customerAdherence = aps.length ? Math.round(((aps.length - overdue.length) / aps.length) * 100) : 100;
 
   return {
     // Band 1 — Roee's north-star
+    customerSlaAdherence: customerAdherence,
     readinessSlaAdherence: adherence,
     droppedOpportunities: overdue.length,
     pctReturning: 0, // all deployments new-hire today; the 2 Cloud Factory candidates are the pilot
