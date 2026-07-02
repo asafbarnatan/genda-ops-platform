@@ -1,58 +1,104 @@
+import { useState } from 'react';
 import { useStore } from '../data/store.jsx';
-import { processTemplate } from '../data/seed';
+import { STEPS, PHASES, BOUNDARY_STEP } from '../data/seed';
+import { projectsAtStep, projectStatus } from '../data/derive';
+import { StatusPill } from '../components/bits.jsx';
 
-// Where each project currently sits on the 24-step spine (by recruitment status).
-// Onboarded projects queue at the readiness spine (Equipment) waiting on the kit → the visible bottleneck.
-const LEVEL = { 'Pre-recruitment': 1, Onboarded: 3, Scheduled: 4, Deployed: 6 };
-// phases 2 (Signature) is index1, Buildots Training index2, Equipment index3 = the readiness-spine bottleneck
-const BOTTLENECKS = {
-  2: { fix: '↻ Parallelize the gates + Confluence SOP', kind: 'readiness spine' },
-  3: { fix: '⚙ "prep technician" Skill fires kit shipment on contract-sign', kind: 'readiness spine' },
-};
+const BOTTLENECK_PHASES = new Set(['Buildots Training', 'Equipment Setup']);
 
 export default function Process() {
-  const { projects } = useStore();
-  const active = projects.filter((p) => !p.junk);
-  const countAt = (i) => active.filter((p) => (LEVEL[p.recruitmentStatus] ?? 1) === i).length;
+  const { projects, navigate } = useStore();
+  const atStep = projectsAtStep(projects);
+  const [drill, setDrill] = useState(null); // step index
+
+  const phaseCount = (phase) => STEPS.filter((s) => s.phase === phase).reduce((n, s) => n + (atStep[s.i]?.length || 0), 0);
+  const drillStep = drill != null ? STEPS[drill] : null;
+  const drillProjects = drill != null ? atStep[drill] : [];
 
   return (
     <div className="page">
       <div className="page-head">
-        <div><h1 className="page-title">Process & Optimisation</h1><div className="page-sub">The 24-step template as an aggregate bottleneck lens · live counts from the portfolio</div></div>
+        <div><h1 className="page-title">Process & Optimisation</h1><div className="page-sub">The 24-step template as a live workflow + aggregate bottleneck lens · click any step to see the projects in it</div></div>
       </div>
 
-      <div className="card card-pad" style={{ marginBottom: 18 }}>
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
         <div className="micro" style={{ marginBottom: 8 }}>Two pathways to deployed</div>
-        <div className="row wrap" style={{ gap: 24 }}>
+        <div className="row wrap" style={{ gap: 24, alignItems: 'center' }}>
           <div className="kv"><span className="pill indigo">New-hire</span> full 24-step path · ~6-week lead</div>
           <div className="kv"><span className="pill green">Returning</span> skips Buildots Training + PPE, still ships the kit · deployable in days</div>
-          <div className="spacer" />
-          <div className="small muted">Reuse is geography-driven: it needs a same-region trained tech → the case for one-vendor-per-region.</div>
+          <span className="spacer" />
+          <div className="small muted">Reuse is geography-driven → the case for one-vendor-per-region.</div>
         </div>
       </div>
 
-      <div className="micro" style={{ margin: '4px 0 8px' }}>End-to-end workflow · projects currently at each phase</div>
-      <div className="wf" style={{ marginBottom: 8 }}>
-        {processTemplate.map((ph, i) => {
-          const bn = BOTTLENECKS[i];
-          return (
-            <div className={`wf-phase ${bn ? 'bottleneck' : ''}`} key={ph.phase}>
-              <div className="ph">{i + 1}. {ph.phase}</div>
-              <div className="wf-count mono-num">{countAt(i)}</div>
-              <div className="small muted">{ph.steps.length} steps · {ph.office ? 'office' : 'field'}</div>
-              {bn && <div className="wf-fix">{bn.fix}</div>}
-              {i === 4 && <div className="pill grey" style={{ marginTop: 6 }}>ownership boundary</div>}
-            </div>
-          );
-        })}
-      </div>
-      <div className="small muted" style={{ marginBottom: 20 }}>Red-bordered phases are the concentrated bottleneck (the readiness spine). Every bottleneck gets a fix: solve-by-process (↻) or automate (⚙).</div>
+      <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
+        {/* Top-down workflow */}
+        <div style={{ flex: drill != null ? '1 1 60%' : '1 1 100%', minWidth: 0 }}>
+          <div className="wf2">
+            {PHASES.map((phase, pi) => {
+              const steps = STEPS.filter((s) => s.phase === phase);
+              const isField = !steps[0].office;
+              const bottleneck = BOTTLENECK_PHASES.has(phase);
+              return (
+                <div key={phase}>
+                  {steps[0].i === BOUNDARY_STEP && (
+                    <div className="boundary" style={{ margin: '4px 0 10px', borderRadius: 6 }}>▾ Handoff to the Regional Lead (Gil) · field execution begins ▾</div>
+                  )}
+                  <div className={`wf2-phase ${bottleneck ? 'bottleneck' : ''}`}>
+                    <div className="wf2-phead">
+                      <span className="pn">{pi + 1}. {phase}</span>
+                      <span className="pill grey">{isField ? 'field' : 'office'}</span>
+                      {bottleneck && <span className="pill red">bottleneck · readiness spine</span>}
+                      <span className="spacer" />
+                      <span className="small muted">{phaseCount(phase)} project{phaseCount(phase) === 1 ? '' : 's'} here</span>
+                    </div>
+                    <div className="wf2-steps">
+                      {steps.map((s) => {
+                        const n = atStep[s.i]?.length || 0;
+                        return (
+                          <div key={s.i} className={`wf2-step ${bottleneck && n > 0 ? 'hot' : ''} ${drill === s.i ? 'hot' : ''}`} onClick={() => setDrill(drill === s.i ? null : s.i)}>
+                            <span className="small muted mono-num">{s.i + 1}</span>
+                            <span>{s.name}</span>
+                            {n > 0 && <span className="c">{n}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {pi < PHASES.length - 1 && <div className="wf2-arrow" style={{ textAlign: 'center' }}>↓</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
+        {/* Drill panel */}
+        {drill != null && (
+          <div className="card" style={{ flex: '1 1 40%', position: 'sticky', top: 76, minWidth: 300 }}>
+            <div className="card-head"><h3>Step {drill + 1}: {drillStep.name}</h3><button className="x" onClick={() => setDrill(null)}>×</button></div>
+            <div className="card-pad">
+              <div className="small muted" style={{ marginBottom: 10 }}>{drillProjects.length} project{drillProjects.length === 1 ? '' : 's'} currently at this step · {drillStep.office ? 'office-owned' : 'field (Regional Lead)'}</div>
+              {drillProjects.length === 0 && <div className="muted small">No projects sit here right now.</div>}
+              {drillProjects.map((p) => (
+                <div key={p.id} className="acard" style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => navigate('schedule', p.id)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <b>{p.name}</b><StatusPill status={projectStatus(p)} /><span className="spacer" /><span className="go">open ↗</span>
+                  </div>
+                  <div className="small muted">{p.account} · {p.region} · {p.assignmentType} · {p.floors ?? '—'} floors</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottleneck fixes */}
+      <div className="micro" style={{ margin: '22px 0 8px' }}>Three bottlenecks → fixes (process fix carries the weight; automation is a forward layer)</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {[
-          { t: '1 · Readiness spine is serial', p: 'Parallelize OSHA10 / Training / Kit / PPE + write the SOP', a: 'A "prep technician" Claude Code Skill (illustrative, not over-promised)' },
-          { t: '2 · Rebuilt from scratch', p: 'Geography-driven reuse: cluster per region, one-vendor-per-region', a: 'Tool surfaces same-region availability; no smart-matching pitch' },
-          { t: '3 · Disconnected tooling', p: 'Single source of truth = Jira + Confluence SOPs', a: 'Native Jira automation now; Claude Code MCP/Skills grow into' },
+          { t: '1 · Readiness spine is serial', p: 'Parallelize OSHA10 / Training / Kit / PPE + write the SOP in Confluence', a: 'A "prep technician" Claude Code Skill fires the parallel gates (illustrative, not over-promised)' },
+          { t: '2 · Rebuilt from scratch', p: 'Geography-driven reuse: cluster per region, one-vendor-per-region', a: 'The tool surfaces same-region availability; no smart-matching pitch' },
+          { t: '3 · Disconnected tooling', p: 'Single source of truth = Jira + Confluence SOPs', a: 'Native Jira automation now; Claude Code MCP / Skills as the grow-into layer' },
         ].map((b) => (
           <div className="card card-pad" key={b.t}>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{b.t}</div>
@@ -62,9 +108,9 @@ export default function Process() {
         ))}
       </div>
 
-      <div className="card card-pad" style={{ marginTop: 18 }}>
+      <div className="card card-pad" style={{ marginTop: 16 }}>
         <div className="micro" style={{ marginBottom: 6 }}>The sequence (the punchline)</div>
-        <div style={{ fontSize: 15, fontWeight: 600 }}>Standardize → cluster/reuse → automate → unlock the vendor scale-up.</div>
+        <div style={{ fontSize: 15, fontWeight: 600 }}>Standardize → cluster / reuse → automate → unlock the vendor scale-up.</div>
         <div className="small muted" style={{ marginTop: 6 }}>Part 5 is the gate Part 1's vendor recommendation depends on: you cannot hand a process to a vendor, or automate it, until it is written down and stable. Tool recommendation: Jira + Confluence + Claude Code, layered honestly.</div>
       </div>
     </div>

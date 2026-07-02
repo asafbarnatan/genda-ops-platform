@@ -8,6 +8,9 @@ const StoreCtx = createContext(null);
 export function StoreProvider({ children }) {
   const [state, setState] = useState(() => activeAdapter.load());
   const [persona, setPersona] = useState('om'); // 'om' | 'manager'
+  const [route, setRoute] = useState({ screen: 'mission', focus: null }); // focus = entity id to auto-open
+  const [acks, setAcks] = useState([]);       // acknowledged/"done" alert ids
+  const [manualAlerts, setManualAlerts] = useState([]); // manually-added events
 
   useEffect(() => {
     activeAdapter.save({ projects: state.projects, technicians: state.technicians, candidates: state.candidates });
@@ -22,6 +25,11 @@ export function StoreProvider({ children }) {
     technicians: state.technicians,
     candidates: state.candidates,
     persona, setPersona,
+    route, navigate: (screen, focus = null) => setRoute({ screen, focus }),
+    clearFocus: () => setRoute((r) => ({ ...r, focus: null })),
+    acks, toggleAck: (id) => setAcks((a) => a.includes(id) ? a.filter((x) => x !== id) : [...a, id]),
+    manualAlerts, addManualAlert: (a) => setManualAlerts((m) => [...m, { ...a, id: `M-${m.length + 1}`, manual: true }]),
+    removeManualAlert: (id) => setManualAlerts((m) => m.filter((x) => x.id !== id)),
 
     // generic CRUD, provenance auto-tagged fictive for user-added rows
     add: (coll, row) => mutate(coll, (arr) => [...arr, { ...row, provenance: row.provenance || 'fictive' }]),
@@ -30,7 +38,7 @@ export function StoreProvider({ children }) {
 
     resetDemo: () => setState(activeAdapter.reset()),
     adapterName: activeAdapter.name,
-  }), [state, persona, mutate]);
+  }), [state, persona, route, acks, manualAlerts, mutate]);
 
   return <StoreCtx.Provider value={api}>{children}</StoreCtx.Provider>;
 }

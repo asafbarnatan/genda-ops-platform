@@ -3,7 +3,7 @@
 // `fictive` rows (technicians, candidates, scores, assignments) are ours, per 4_Data_Layer.md.
 // This module is the initial seed; the store loads it into localStorage on first run.
 
-export const SEED_VERSION = 'v1';
+export const SEED_VERSION = 'v2';
 export const TODAY = '2026-07-01'; // the operation's "today" (matches the strategy docs)
 
 // ---------------------------------------------------------------------------
@@ -11,7 +11,7 @@ export const TODAY = '2026-07-01'; // the operation's "today" (matches the strat
 // Assigned techs / candidateScore / training / recruitmentStatus are FICTIVE
 // (derived from the Data Layer assignment map §5).
 // ---------------------------------------------------------------------------
-export const seedProjects = [
+const baseProjects = [
   { id: 'BBH', name: 'BBH', product: 'Genda Pro', stage: 'Commercials', type: 'Healthcare', account: 'XX Construction', country: 'United States', region: 'Texas', requestedDelivery: '2026-07-07', projectEnd: '2028-07-07', durationMo: 24, floors: 12, buildings: 2, owner: 'DF', channel: 'Craigslist', assignedTechs: ['T-101'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Deployed', dataNote: '', provenance: 'provided' },
   { id: 'Buck D', name: 'Buck D', product: 'Genda Pro', stage: 'Paperwork', type: 'Residential', account: 'JJ Construction', country: 'United States', region: 'Southeast', requestedDelivery: '2027-05-11', projectEnd: '2029-01-01', durationMo: 18, floors: 14, buildings: 1, owner: 'LS', channel: 'Facebook', assignedTechs: ['T-104'], candidateScore: 3, training: 'Done', recruitmentStatus: 'Onboarded', dataNote: '', provenance: 'provided' },
   { id: 'Hub At', name: 'Hub At', product: 'Genda Pro', stage: 'Paperwork', type: 'Residential', account: 'JJ Construction', country: 'United States', region: 'Southeast', requestedDelivery: '2026-08-04', projectEnd: '2028-07-21', durationMo: 14, floors: 11, buildings: 1, owner: 'LS', channel: 'Craigslist', assignedTechs: ['T-102'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Scheduled', dataNote: '', provenance: 'provided' },
@@ -27,6 +27,69 @@ export const seedProjects = [
   { id: 'WRH', name: 'WRH', product: 'Genda Pro', stage: 'Qualification', type: 'Education', account: 'JJ Construction', country: 'United States', region: 'Southeast', requestedDelivery: '2026-08-06', projectEnd: '2027-12-01', durationMo: 15, floors: 4, buildings: 1, owner: 'LS', channel: 'Craigslist', assignedTechs: ['T-102'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Scheduled', dataNote: '', provenance: 'provided' },
   { id: 'Z1', name: 'Z1', product: 'Genda Pro', stage: 'Alignment', type: 'Residential', account: 'JJ Construction', country: 'United States', region: 'Southeast', requestedDelivery: '2026-09-01', projectEnd: '2027-12-09', durationMo: 25, floors: 8, buildings: 1, owner: 'LS', channel: 'LinkedIn', assignedTechs: ['T-103'], candidateScore: 4, training: 'Done', recruitmentStatus: 'Scheduled', dataNote: '', provenance: 'provided' },
 ];
+
+// ---------------------------------------------------------------------------
+// The 24-step process template, flattened. `office` = office-owned; false = field (Regional Lead).
+// Handoff to the Regional Lead sits before "Site Orientation" (step 14). Monthly Payment Approval is office.
+// ---------------------------------------------------------------------------
+export const STEPS = [
+  { i: 0, phase: 'Pre-Signature', name: 'Installation Opportunity Created', office: true },
+  { i: 1, phase: 'Pre-Signature', name: 'Installation Opportunity Tracker', office: true },
+  { i: 2, phase: 'Pre-Signature', name: 'Service Source', office: true },
+  { i: 3, phase: 'Signature', name: 'Sales HO (Handoff)', office: true },
+  { i: 4, phase: 'Signature', name: 'Contract', office: true },
+  { i: 5, phase: 'Signature', name: 'Project Slide Deck', office: true },
+  { i: 6, phase: 'Signature', name: 'Project Installation Plan', office: true },
+  { i: 7, phase: 'Buildots Training', name: 'BD System Permissions', office: true },
+  { i: 8, phase: 'Buildots Training', name: 'Staffing Status', office: true },
+  { i: 9, phase: 'Buildots Training', name: 'OSHA10', office: true },
+  { i: 10, phase: 'Buildots Training', name: 'Buildots Training', office: true },
+  { i: 11, phase: 'Equipment Setup', name: 'Installation Kits', office: true },
+  { i: 12, phase: 'Equipment Setup', name: 'PPE', office: true },
+  { i: 13, phase: 'First Installation', name: 'Site Orientation Info', office: true },
+  { i: 14, phase: 'First Installation', name: 'Site Orientation', office: false },
+  { i: 15, phase: 'First Installation', name: '0th Installation', office: false },
+  { i: 16, phase: 'First Installation', name: 'First Installation', office: false },
+  { i: 17, phase: 'First Installation', name: 'First Upload', office: false },
+  { i: 18, phase: 'First Installation', name: 'Location & Summary Received', office: false },
+  { i: 19, phase: 'First Installation', name: 'First Installation Review', office: false },
+  { i: 20, phase: 'First Installation', name: 'Review Sent to Technician', office: false },
+  { i: 21, phase: 'Operational Delivery', name: 'Ongoing Installations', office: false },
+  { i: 22, phase: 'Operational Delivery', name: 'Ongoing Installation Reviews', office: false },
+  { i: 23, phase: 'Billing & Payments', name: 'Monthly Payment Approval', office: true },
+];
+export const BOUNDARY_STEP = 14; // handoff to Regional Lead begins here
+export const PHASES = [...new Set(STEPS.map((s) => s.phase))];
+
+// where each project currently sits on the 24-step spine (from recruitment status)
+const PROGRESS_BY_STATUS = { 'Pre-recruitment': 3, Onboarded: 12, Scheduled: 16, Deployed: 21 };
+// Returning-tech projects (fast path): skip Buildots Training + PPE
+const RETURNING = new Set(['RISE', 'Z1']);
+// seed change-log history for a few projects (FICTIVE) — cause taxonomy + acceleration + volatility
+const CHANGE_LOGS = {
+  JPSM: [
+    { id: 'j1', ts: '2026-05-02', field: 'Requested Delivery', old: '2026-07-20', new: '2026-07-08', delta: -12, cause: 'Client update', by: 'DF', note: 'Client pulled the date forward' },
+    { id: 'j2', ts: '2026-06-10', field: 'Requested Delivery', old: '2026-07-08', new: '2026-07-01', delta: -7, cause: 'Construction ahead', by: 'DF', note: 'Structure ready early — runway compressed' },
+  ],
+  WAP: [
+    { id: 'w1', ts: '2026-06-15', field: 'Requested Delivery', old: '2026-12-20', new: '2026-12-01', delta: -19, cause: 'Construction ahead', by: 'LS', note: 'Acceleration — 52 floors need a 3-crew, watch the runway' },
+  ],
+  'Hub At': [
+    { id: 'h1', ts: '2026-06-28', field: 'Requested Delivery', old: '2026-08-02', new: '2026-08-04', delta: 2, cause: 'Client update', by: 'LS', note: 'Routine 2-day slip' },
+  ],
+  '27th Street': [
+    { id: 's1', ts: '2026-04-10', field: 'Requested Delivery', old: '2026-05-15', new: '2026-06-02', delta: 18, cause: 'Construction behind', by: 'LS', note: 'Slip; now overdue' },
+  ],
+};
+
+export const seedProjects = baseProjects.map((p) => ({
+  ...p,
+  assignmentType: RETURNING.has(p.id) ? 'Returning' : 'New-hire',
+  progress: p.junk ? 0 : (PROGRESS_BY_STATUS[p.recruitmentStatus] ?? 3),
+  stepState: {}, // manual overrides: { [stepIndex]: 'done'|'doing'|'blocked'|'skipped' }
+  changeLog: CHANGE_LOGS[p.id] || [],
+  changeCount: (CHANGE_LOGS[p.id] || []).length,
+}));
 
 // ---------------------------------------------------------------------------
 // TECHNICIANS — 7, all FICTIVE (technicians_fictive.csv). 5 active + 2 churned.
