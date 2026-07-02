@@ -243,8 +243,13 @@ hr.sep { border: none; border-top: 1px solid var(--bd-border); margin: var(--s5)
 .fb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .copytick { color: var(--bd-green); font-size: 12px; }
 
+/* ---- clickable tile (drill-down) ---- */
+.clickable-tile { cursor: pointer; }
+.clickable-tile:hover { border-color: var(--bd-ink-3); }
+.tile-go { float: right; color: var(--bd-ink-3); font-size: 12px; font-weight: 700; }
+
 /* ---- tile hover hint ---- */
-.tile.has-hint { cursor: help; overflow: visible; }
+.tile.has-hint { overflow: visible; }
 .tile.has-hint:hover { z-index: 40; }
 .tile-pop { display: none; position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 50; background: var(--bd-ink); color: #fff; border-radius: 8px; padding: 10px 12px; font-size: 12px; line-height: 1.5; box-shadow: var(--sh-modal); }
 .tile-pop::after { content: ''; position: absolute; top: 100%; left: 24px; border: 6px solid transparent; border-top-color: var(--bd-ink); }

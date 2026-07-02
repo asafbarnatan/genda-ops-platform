@@ -1,7 +1,34 @@
+import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
-import { missionTiles, deriveAlerts, qualityTrend, activeTechs, projectStatus } from '../data/derive';
+import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite } from '../data/derive';
 import { Tile, Icon } from '../components/bits.jsx';
+import { Modal } from '../components/Modal.jsx';
+
+function TileDetail({ d, onGo, onClose }) {
+  return (
+    <Modal title={d.title} onClose={onClose}
+      footer={<><button className="btn-text" onClick={onClose}>Close</button>{d.link && <button className="btn btn-primary" onClick={() => onGo(d.link.screen)}>{d.link.label} ↗</button>}</>}>
+      <div style={{ fontSize: 34, fontWeight: 700 }} className="mono-num">{d.value}</div>
+      <div className="micro" style={{ margin: '14px 0 4px' }}>How it's computed</div>
+      <div className="small">{d.formula}</div>
+      {d.note && <div className="small muted" style={{ marginTop: 6 }}>{d.note}</div>}
+      {d.items && d.items.length > 0 && (
+        <>
+          <div className="micro" style={{ margin: '16px 0 4px' }}>What feeds it</div>
+          <div>
+            {d.items.map((it, i) => (
+              <div key={i} className="step" style={{ justifyContent: 'space-between', cursor: it.focus ? 'pointer' : 'default', borderBottom: '1px solid #F1F1F1', padding: '8px 0' }} onClick={() => it.focus && onGo(it.goScreen || d.link?.screen || 'schedule', it.focus)}>
+                <span><span className={`dot-s ${it.bad ? 'red' : it.warn ? 'amber' : 'green'}`} /> <b>{it.name}</b></span>
+                <span className="small muted">{it.note}{it.focus && ' ↗'}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
 
 function ActionRow({ a, onDone, onOpen }) {
   return (
@@ -31,6 +58,64 @@ export default function MissionControl() {
   const open = alerts.filter((a) => a.tier !== 'info' && !acks.includes(a.id));
   const cleared = alerts.filter((a) => a.tier !== 'info' && acks.includes(a.id)).length;
 
+  const [detail, setDetail] = useState(null);
+  const aps = activeProjects(projects);
+  const overdueList = aps.filter((p) => projectStatus(p) === 'critical');
+  const atRiskList = aps.filter((p) => ['atrisk', 'critical'].includes(projectStatus(p)));
+  const flaggedTechs = technicians.filter((t) => t.pool !== 'Active');
+  const goDetail = (screen, focus = null) => { navigate(screen, focus); setDetail(null); };
+
+  const DETAILS = {
+    customer: {
+      title: 'Customer SLA adherence', value: `${m.customerSlaAdherence}%`, link: { screen: 'schedule', label: 'Open the Schedule' },
+      formula: `Projects delivered on or before the committed date ÷ all active projects = ${aps.length - overdueList.length} of ${aps.length}.`,
+      note: 'The external promise: did we hit the date the client was given? A single miss (27th Street) drops us below 100%.',
+      items: aps.map((p) => ({ name: p.name, note: projectStatus(p) === 'critical' ? 'missed / overdue' : 'on track to meet the date', bad: projectStatus(p) === 'critical', focus: p.id })),
+    },
+    dropped: {
+      title: 'Dropped opportunities', value: m.droppedOpportunities, link: { screen: 'schedule', label: 'Open the Schedule' },
+      formula: `Projects past their Requested Delivery date and not delivered. Count = ${overdueList.length}.`,
+      note: 'Each is a client-facing miss. Target is zero.',
+      items: overdueList.length ? overdueList.map((p) => ({ name: p.name, note: `delivery ${p.requestedDelivery} has passed`, bad: true, focus: p.id })) : [{ name: 'None', note: 'no projects overdue', bad: false }],
+    },
+    readiness: {
+      title: 'Readiness SLA (internal)', value: `${m.readinessSlaAdherence}%`, link: { screen: 'schedule', label: 'Open the Schedule' },
+      formula: 'Of projects due soon, the share on pace to be ready ≥10 business days before delivery (not Critical).',
+      note: 'Internal leading indicator that protects the customer SLA.',
+      items: atRiskList.map((p) => ({ name: p.name, note: `${projectStatus(p) === 'critical' ? 'critical' : 'at risk'} — dragging it down`, bad: projectStatus(p) === 'critical', warn: projectStatus(p) === 'atrisk', focus: p.id })),
+    },
+    readyTech: {
+      title: 'Ready-tech coverage', value: `${m.techActive} ready`, link: { screen: 'pipeline', label: 'Open the Pipeline' },
+      formula: `Technicians currently in the Active pool = ${acts.length}.`,
+      note: 'Reused across projects, so fewer than the number of project slots.',
+      items: acts.map((t) => ({ name: t.name, note: `${t.region} · Q ${qualityComposite(t.metrics)}`, bad: false, focus: t.id, goScreen: 'quality' })),
+    },
+    returning: {
+      title: '% returning deployments', value: `${m.pctReturning}%`, link: { screen: 'process', label: 'Open Process' },
+      formula: 'Deployments served by a returning technician ÷ all deployments.',
+      note: 'Currently 0% — all deployments are new-hire. The 2 Cloud Factory candidates are the vendor pilot that starts to lift this.', items: [],
+    },
+    atRisk: {
+      title: 'Projects at risk', value: m.atRisk, link: { screen: 'schedule', label: 'Open the Schedule' },
+      formula: `Projects At risk (inside the readiness buffer) or Critical (overdue / no ready tech). Count = ${atRiskList.length}.`,
+      items: atRiskList.map((p) => ({ name: p.name, note: projectStatus(p) === 'critical' ? 'critical' : 'at risk', bad: projectStatus(p) === 'critical', warn: projectStatus(p) === 'atrisk', focus: p.id })),
+    },
+    avgQuality: {
+      title: 'Avg technician quality', value: m.avgQuality, link: { screen: 'quality', label: 'Open Quality' },
+      formula: `Mean of the active roster's composites = (${acts.map((t) => qualityComposite(t.metrics)).join(' + ')}) ÷ ${acts.length}.`,
+      note: `${flaggedTechs.length} technicians flagged (benched / removed) sit outside this average.`,
+      items: acts.map((t) => ({ name: t.name, note: `composite ${qualityComposite(t.metrics)}`, bad: qualityComposite(t.metrics) < 3, warn: qualityComposite(t.metrics) < 3.5, focus: t.id, goScreen: 'quality' })),
+    },
+    bottleneck: {
+      title: 'Top bottleneck', value: 'Readiness spine', link: { screen: 'process', label: 'Open Process' },
+      formula: 'The phase where projects dwell longest before deploying: OSHA10 → Training → Kit → PPE.',
+      note: 'Standardizing + parallelizing this phase is the main process fix.', items: [],
+    },
+    alertCritical: { title: 'Alerts · critical', value: m.alertCritical, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Alerts that hit a client outcome or breach the Readiness SLA.', items: alerts.filter((a) => a.tier === 'critical').map((a) => ({ name: a.trigger, note: a.subject, bad: true })) },
+    alertAction: { title: 'Alerts · action', value: m.alertAction, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Real issues you own the timing on — handle this week.', items: alerts.filter((a) => a.tier === 'action').map((a) => ({ name: a.trigger, note: a.subject, warn: true })) },
+    alertInfo: { title: 'Alerts · info', value: m.alertInfo, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Awareness only — no action needed.', items: alerts.filter((a) => a.tier === 'info').map((a) => ({ name: a.trigger, note: a.subject, bad: false })) },
+  };
+
   return (
     <div className="page">
       <div className="page-head">
@@ -52,33 +137,33 @@ export default function MissionControl() {
         <Tile label="Pipeline" value={m.candidates} sub="Cloud Factory vendor pilot" />
       </div>
 
-      <div className="micro" style={{ margin: '6px 0 8px' }}>North-star KPI — Roee's #1: on-time delivery to the client</div>
+      <div className="micro" style={{ margin: '6px 0 8px' }}>North-star KPI — on-time delivery to the client</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 18 }}>
-        <Tile accent={m.customerSlaAdherence >= 95 ? 'green' : 'amber'} label="Customer SLA adherence" value={`${m.customerSlaAdherence}%`} sub="delivered on the date committed to the client"
-          hint="Roee's #1 KPI from the interview: the share of projects delivered on (or before) the date committed to the client. This is the external promise every other metric protects." />
-        <Tile accent={m.droppedOpportunities === 0 ? 'green' : 'red'} label="Dropped opportunities" value={m.droppedOpportunities} sub="missed the delivery date · target 0"
-          hint={`The other half of Roee's #1 KPI: opportunities lost by missing the committed date. Currently ${m.droppedOpportunities} (27th Street), from its provided delivery date. Target is zero.`} />
-        <Tile accent="indigo" label="Readiness SLA (internal)" value={`${m.readinessSlaAdherence}%`} sub="secondary — ready ≥10 days early"
-          hint="Our internal early-warning metric: ready at least 10 business days before delivery. Important, but secondary — it is the leading indicator that protects the customer SLA on the left." />
+        <Tile accent={m.customerSlaAdherence >= 95 ? 'green' : 'amber'} label="Customer SLA adherence" value={`${m.customerSlaAdherence}%`} sub="delivered on the date committed to the client" onOpen={() => setDetail('customer')}
+          hint="The primary KPI: the share of projects delivered on (or before) the date committed to the client. This is the external promise every other metric protects. Click for the breakdown." />
+        <Tile accent={m.droppedOpportunities === 0 ? 'green' : 'red'} label="Dropped opportunities" value={m.droppedOpportunities} sub="missed the delivery date · target 0" onOpen={() => setDetail('dropped')}
+          hint="Opportunities lost by missing the committed delivery date. Target is zero. Click for the breakdown." />
+        <Tile accent="indigo" label="Readiness SLA (internal)" value={`${m.readinessSlaAdherence}%`} sub="secondary — ready ≥10 days early" onOpen={() => setDetail('readiness')}
+          hint="Our internal early-warning metric: ready at least 10 business days before delivery. Secondary — the leading indicator that protects the customer SLA. Click for the breakdown." />
       </div>
 
       <div className="micro" style={{ margin: '6px 0 8px' }}>Operational health</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 18 }}>
-        <Tile label="Ready-tech coverage" value={`${m.techActive} ready`} sub="active roster vs near-term demand"
-          hint="Active technicians available to deploy. Reused across projects, so this is smaller than the number of project slots — utilization, not headcount." />
-        <Tile accent="indigo" label="% returning deployments" value={`${m.pctReturning}%`} sub="reuse vs new-hire — the scalability lever"
-          hint="Share of deployments served by a returning technician (fast path) instead of a new hire. Higher = faster, cheaper scaling. The vendor pilot is how we grow it." />
-        <Tile accent={m.atRisk > 2 ? 'amber' : 'green'} label="Projects at risk" value={m.atRisk} sub="amber + red, floated to the top"
-          hint="Projects that are At risk (inside the readiness buffer) or Critical (overdue / no ready tech). These float to the top of the Schedule." />
-        <Tile label="Avg technician quality" value={m.avgQuality} sub={`weighted 1-5 · ${m.flagged} flagged for review`}
-          hint="Weighted average of the active roster's composite quality scores (Coverage 30 / Reliability 25 / On-time 20 / Upload 15 / Issues 10)." />
+        <Tile label="Ready-tech coverage" value={`${m.techActive} ready`} sub="active roster vs near-term demand" onOpen={() => setDetail('readyTech')}
+          hint="Active technicians available to deploy. Reused across projects — utilization, not headcount. Click to see who." />
+        <Tile accent="indigo" label="% returning deployments" value={`${m.pctReturning}%`} sub="reuse vs new-hire — the scalability lever" onOpen={() => setDetail('returning')}
+          hint="Deployments served by a returning technician instead of a new hire. Higher = faster, cheaper scaling. Click for detail." />
+        <Tile accent={m.atRisk > 2 ? 'amber' : 'green'} label="Projects at risk" value={m.atRisk} sub="amber + red, floated to the top" onOpen={() => setDetail('atRisk')}
+          hint="Projects At risk (inside the readiness buffer) or Critical (overdue / no ready tech). Click to see which." />
+        <Tile label="Avg technician quality" value={m.avgQuality} sub={`weighted 1-5 · ${m.flagged} flagged for review`} onOpen={() => setDetail('avgQuality')}
+          hint="Weighted average of the active roster's composite scores. Click to see each technician's contribution." />
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>Readiness spine</span>} sub="most projects queue at Training → Kit"
-          hint="The phase where projects dwell longest before deploying (OSHA10 → Training → Kit → PPE). The target for standardization + automation in Process." />
-        <Tile accent="red" label="Alerts · critical" value={m.alertCritical} sub="act now, ~24-48h" hint="Alerts that hit a client outcome or breach the Readiness SLA. Act within 24-48h." />
-        <Tile accent="amber" label="Alerts · action" value={m.alertAction} sub="handle this week" hint="Real issues you own the timing on — handle within the week." />
-        <Tile accent="green" label="Alerts · info" value={m.alertInfo} sub="monitor only" hint="Awareness only, no action needed — e.g. a routine date change that auto-propagated." />
+        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>Readiness spine</span>} sub="most projects queue at Training → Kit" onOpen={() => setDetail('bottleneck')}
+          hint="The phase where projects dwell longest before deploying. Click for detail." />
+        <Tile accent="red" label="Alerts · critical" value={m.alertCritical} sub="act now, ~24-48h" onOpen={() => setDetail('alertCritical')} hint="Alerts that hit a client outcome or breach the Readiness SLA. Click to see them." />
+        <Tile accent="amber" label="Alerts · action" value={m.alertAction} sub="handle this week" onOpen={() => setDetail('alertAction')} hint="Real issues you own the timing on. Click to see them." />
+        <Tile accent="green" label="Alerts · info" value={m.alertInfo} sub="monitor only" onOpen={() => setDetail('alertInfo')} hint="Awareness only. Click to see them." />
       </div>
 
       {isOM ? (
@@ -132,6 +217,8 @@ export default function MissionControl() {
           </div>
         </div>
       )}
+
+      {detail && <TileDetail d={DETAILS[detail]} onGo={goDetail} onClose={() => setDetail(null)} />}
     </div>
   );
 }

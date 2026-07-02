@@ -84,10 +84,8 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
 
         {tab === 'manage' && (
           <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div className="small muted" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              Every change here saves instantly and flows to the timeline, table, alerts, and Mission Control — no separate save needed.
-              {savedMsg && <span className="pill green">{savedMsg}</span>}
-            </div>
+            {savedMsg && <div style={{ background: 'var(--bd-green-bg)', color: '#1f7a54', border: '1px solid #bfe6d4', borderRadius: 6, padding: '9px 12px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>{savedMsg} — it now shows in the timeline, table, and History.</div>}
+            <div className="small muted">Each section below saves on its own button (or on click) — there's no single Save; changes apply instantly and flow to the timeline, table, alerts, and Mission Control. You'll see a green confirmation here.</div>
 
             <div>
               <div className="micro" style={{ marginBottom: 4 }}>Assign / change technicians · {techniciansNeeded(project)} needed</div>
@@ -265,7 +263,7 @@ export default function Schedule() {
             <span className="lk"><span className="dot-s grey" /> Quarterly recurring visit</span>
             <span className="lk"><span style={{ opacity: 0.4 }}>◇</span> Previous date (ghost)</span>
             <span className="lk"><span className="pill green" style={{ fontSize: 9, padding: '1px 6px' }}>↩</span> Returning-tech</span>
-            <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--bd-border)', margin: '0 4px' }} />
+            <span style={{ flexBasis: '100%', height: 0 }} />
             <span className="micro" style={{ letterSpacing: '0.05em' }}>Status</span>
             <span className="lk"><span className="dot-s green" /> On track</span>
             <span className="lk"><span className="dot-s amber" /> At risk</span>
