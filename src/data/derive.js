@@ -58,6 +58,20 @@ export function projectStatus(p, today = TODAY) {
 }
 export const STATUS_LABEL = { ontrack: 'On track', atrisk: 'At risk', critical: 'Critical', na: '—' };
 
+// plain-language reason for the status — so "why Critical?" is answerable on the platform
+export function statusReason(p, today = TODAY) {
+  if (p.junk || p.floors == null) return 'Not enough data to assess.';
+  const d = daysBetween(today, p.requestedDelivery);
+  const ready = projectReady(p);
+  const accel = (p.changeLog || []).some((c) => c.delta < -10);
+  if (d < 0) return `Overdue: the Requested Delivery date passed ${Math.abs(d)} days ago and the project is not delivered. This is a client-facing miss.`;
+  if (d <= 14 && !ready) return `Readiness gap: delivery is in ${d} days — inside the 10-day Readiness SLA buffer — and there is no Ready technician yet.`;
+  if (accel && d <= 60) return `Acceleration risk: the delivery date was pulled earlier (see History), compressing the readiness runway.`;
+  if (d <= 14 && ready) return `Delivery is in ${d} days — inside the 10-day Readiness SLA buffer. It is staffed, so confirm the technician and site access and monitor.`;
+  if (d <= 42 && (p.assignedTechs?.length === 0)) return `Inside the ~6-week recruit window with no technician assigned yet.`;
+  return `On track: delivery is ${d} days out, a technician is assigned, and readiness is on pace with buffer to spare.`;
+}
+
 // ---- staffing ----
 export function techniciansNeeded(p) {
   if (p.floors == null) return 0;

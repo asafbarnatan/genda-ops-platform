@@ -1,5 +1,5 @@
 import Nav from './components/Nav.jsx';
-import { Legend, Icon } from './components/bits.jsx';
+import { Icon } from './components/bits.jsx';
 import { useStore } from './data/store.jsx';
 import MissionControl from './screens/MissionControl.jsx';
 import Pipeline from './screens/Pipeline.jsx';
@@ -26,7 +26,6 @@ export default function App() {
     <>
       <Nav screens={SCREENS} active={active} onNav={(id) => navigate(id)} />
       <div style={{ maxWidth: 1320, margin: '0 auto', padding: '10px 24px 0', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        <Legend />
         <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={resetDemo} title="Restore the original seed data">
           <Icon.reset /> Reset demo data
         </button>

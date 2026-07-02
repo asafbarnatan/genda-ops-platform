@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../data/store.jsx';
 import {
-  projectStatus, techniciansNeeded, readinessBy, recruitBy, fmtDate, parseDate, daysBetween, addDays,
+  projectStatus, statusReason, STATUS_LABEL, techniciansNeeded, readinessBy, recruitBy, fmtDate, parseDate, daysBetween, addDays,
   stepStatus, readinessPct, phaseOfProgress, recurringVisits, assignedNames, activeTechs,
 } from '../data/derive';
 import { STEPS, PHASES, BOUNDARY_STEP } from '../data/seed';
-import { StatusPill, ProvDot, Icon, FilterBar } from '../components/bits.jsx';
+import { StatusPill, Icon, FilterBar } from '../components/bits.jsx';
 import { EntityModal } from '../components/Modal.jsx';
 
 const REGIONS = ['Texas', 'Southeast', 'West'];
@@ -31,7 +31,9 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
   const [savedMsg, setSavedMsg] = useState('');
   const names = assignedNames(project, technicians);
   const roster = activeTechs(technicians);
-  const doUpdate = (patch, log) => { onUpdate(patch, log); setSavedMsg('✓ Saved to the project'); setTimeout(() => setSavedMsg(''), 1800); };
+  const sc = projectStatus(project);
+  const flash = (msg) => { setSavedMsg(msg); setTimeout(() => setSavedMsg(''), 1800); };
+  const doUpdate = (patch, log) => { onUpdate(patch, log); flash('✓ Saved to the project'); };
 
   const applyDate = () => {
     if (!dDate) return;
@@ -48,6 +50,7 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
             <div className="micro">Project · {project.assignmentType}</div>
             <h3 style={{ fontSize: 18, margin: '2px 0 6px' }}>{project.name} <StatusPill status={projectStatus(project)} /></h3>
             <div className="small muted">Readiness {readinessPct(project)}% · phase: {phaseOfProgress(project)} · {names.length ? names.join(', ') : 'no tech assigned'}</div>
+            <div className="small" style={{ marginTop: 8, padding: '7px 10px', borderRadius: 6, background: sc === 'critical' ? 'var(--bd-red-bg)' : sc === 'atrisk' ? 'var(--bd-amber-bg)' : 'var(--bd-green-bg)', color: sc === 'critical' ? '#b23524' : sc === 'atrisk' ? '#a5641b' : '#1f7a54' }}><b>Why {STATUS_LABEL[sc]}:</b> {statusReason(project)}</div>
           </div>
           <button className="x" onClick={onClose}>×</button>
         </div>
@@ -59,6 +62,7 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
           <div>
             <div style={{ padding: '10px 24px 0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="small muted">Open any number of phases at once — parallel work is normal. Click a step to mark it done / blocked; it writes to History and recomputes readiness.</span>
+              {savedMsg && <span className="pill green">{savedMsg}</span>}
               <span className="spacer" />
               <button className="btn-text btn-sm" onClick={() => setOpenPhases(PHASES)}>Expand all</button>
               <button className="btn-text btn-sm" onClick={() => setOpenPhases([])}>Collapse all</button>
@@ -82,7 +86,7 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
                         {steps.map((s) => {
                           const st = stepStatus(project, s.i);
                           return (
-                            <div className="step" key={s.i} style={{ cursor: 'pointer' }} onClick={() => onToggleStep(s.i, st)} title="click to toggle done / blocked">
+                            <div className="step" key={s.i} style={{ cursor: 'pointer' }} onClick={() => { onToggleStep(s.i, st); flash(st === 'done' ? '✓ Step marked blocked' : st === 'blocked' ? '✓ Step reset' : '✓ Step marked done'); }} title="click to toggle done / blocked">
                               <span className={`glyph ${st}`} style={{ width: 18, height: 18, fontSize: 11 }}>{GLYPH[st]}</span>
                               <span className="small muted mono-num" style={{ minWidth: 18 }}>{s.i + 1}.</span>
                               <span style={{ textDecoration: st === 'skipped' ? 'line-through' : 'none' }}>{s.name}</span>
@@ -164,6 +168,7 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
             ].map(([k, v]) => (
               <div className="kv" key={k} style={{ flexDirection: 'column', gap: 2 }}><span className="k">{k}</span><b>{v}</b></div>
             ))}
+            <div className="kv" style={{ gridColumn: '1 / -1', flexDirection: 'column', gap: 3 }}><span className="k">Status &amp; why</span><div><StatusPill status={sc} /> <span className="small">{statusReason(project)}</span></div></div>
           </div>
         )}
 

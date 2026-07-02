@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend as RLegend } from 'recharts';
 import { useStore } from '../data/store.jsx';
 import { qualityComposite, suggestedPool, qualityTrend, metricTrend, activeTechs, METRIC_DEFS, assignedNames } from '../data/derive';
-import { PoolPill, ProvDot, FilterBar } from '../components/bits.jsx';
+import { PoolPill, FilterBar } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
 
 const LINE_COLORS = ['#5B4FE9', '#3FB37F', '#E6B23C', '#8B7FE8', '#E5533D', '#2F6DB5'];
@@ -133,7 +133,7 @@ export default function Quality() {
           <tbody>
             {rows.map((t) => (
               <tr key={t.id} className="rowlink" onClick={() => setSel(t)}>
-                <td><ProvDot provenance="fictive" /> <b>{t.name}</b> <span className="small muted">{t.id}</span></td>
+                <td><b>{t.name}</b> <span className="small muted">{t.id}</span></td>
                 <td>{t.channel}</td><td>{t.region}</td>
                 <td className="num">{t.candidateScore ?? '—'}</td>
                 <td className="num"><b>{qualityComposite(t.metrics)}</b></td>

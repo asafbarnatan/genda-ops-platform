@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../data/store.jsx';
 import { funnelLiquidity, channelScorecard, qualityComposite } from '../data/derive';
 import { EntityModal } from '../components/Modal.jsx';
-import { Icon, PoolPill, ProvDot, FilterBar } from '../components/bits.jsx';
+import { Icon, PoolPill, FilterBar } from '../components/bits.jsx';
 
 const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud Factory'];
 const REGIONS = ['Texas', 'Southeast', 'West'];
@@ -73,13 +73,13 @@ export default function Pipeline() {
             <div className="kcol-head"><span className="t">{s}</span><span className="pill grey">{cands.filter((c) => c.stage === s).length + (s === 'Deployed' ? deployed.length : 0)}</span></div>
             {cands.filter((c) => c.stage === s).map((c) => (
               <div className="kcard" key={c.id} draggable onDragStart={(e) => e.dataTransfer.setData('id', c.id)} onClick={() => openCand(c)} style={isVendor(c.channel) ? { borderColor: '#5B4FE9', borderLeftWidth: 3 } : {}}>
-                <div className="n"><ProvDot provenance="fictive" /> {c.name}</div>
+                <div className="n">{c.name}</div>
                 <div className="m">{isVendor(c.channel) ? <span className="pill indigo">Cloud Factory</span> : <span>{c.channel}</span>} · <span>{c.region}</span>{c.daysInStage != null && <span className="pill grey">{c.daysInStage}d</span>}</div>
               </div>
             ))}
             {s === 'Deployed' && deployed.map((t) => (
               <div className="kcard" key={t.id} onClick={() => openTech(t)}>
-                <div className="n"><ProvDot provenance="fictive" /> {t.name} <span className="pill green" style={{ fontSize: 9 }}>tech</span></div>
+                <div className="n">{t.name} <span className="pill green" style={{ fontSize: 9 }}>tech</span></div>
                 <div className="m"><span>{t.channel}</span> · <span>Q {qualityComposite(t.metrics)}</span> · <span>{t.projects?.length || 0} proj</span></div>
               </div>
             ))}
@@ -90,7 +90,7 @@ export default function Pipeline() {
           <div className="kcol-head"><span className="t">Benched</span><span className="pill grey">{benched.length}</span></div>
           {benched.map((t) => (
             <div className="kcard" key={t.id} onClick={() => openTech(t)}>
-              <div className="n"><ProvDot provenance="fictive" /> {t.name}</div>
+              <div className="n">{t.name}</div>
               <div className="m"><PoolPill pool="Benched" /> <span>Q {qualityComposite(t.metrics)}</span></div>
             </div>
           ))}
@@ -98,7 +98,7 @@ export default function Pipeline() {
           <div className="micro" style={{ margin: '12px 0 6px' }}>Removed ({removed.length})</div>
           {removed.map((t) => (
             <div className="kcard" key={t.id} style={{ opacity: 0.6 }} onClick={() => openTech(t)}>
-              <div className="n"><ProvDot provenance="fictive" /> {t.name}</div>
+              <div className="n">{t.name}</div>
               <div className="m"><PoolPill pool="Removed" /> <span>Q {qualityComposite(t.metrics)}</span></div>
             </div>
           ))}
@@ -131,7 +131,7 @@ export default function Pipeline() {
           <tbody>
             {scorecard.map((r) => (
               <tr key={r.channel}>
-                <td><ProvDot provenance="fictive" /> <b>{r.channel}</b> {r.projected && <span className="pill indigo">projected</span>}</td>
+                <td><b>{r.channel}</b> {r.projected && <span className="pill indigo">projected</span>}</td>
                 <td className="num">{r.projected ? '2 in pipeline' : r.count}</td>
                 <td className="num">{r.avgQuality ?? '—'}</td>
                 <td className="num">{r.projected ? '—' : `${r.churnRate}%`}</td>
