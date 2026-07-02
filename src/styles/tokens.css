@@ -1,0 +1,36 @@
+/* Buildots product-UI tokens — see DESIGN.md (system A). */
+:root {
+  --bd-bg: #F4F5F6;
+  --bd-surface: #FFFFFF;
+  --bd-surface-alt: #FAFAFB;
+  --bd-border: #E6E7E9;
+  --bd-border-strong: #D6D7DA;
+  --bd-ink: #20201E;
+  --bd-ink-2: #6B6C6E;
+  --bd-ink-3: #9A9B9D;
+
+  --bd-amber: #E6B23C;
+  --bd-amber-hover: #DDA62B;
+  --bd-amber-ink: #20201E;
+  --bd-lime: #DDF250;
+
+  --bd-viz-actual: #D4E64C;
+  --bd-viz-plan: #C7C9CC;
+  --bd-viz-forecast: #8B7FE8;
+  --bd-viz-delay: #E9AEC8;
+  --bd-indigo: #5B4FE9;
+
+  --bd-green: #3FB37F; --bd-green-bg: #E9F6F0;
+  --bd-amber-s: #E8973F; --bd-amber-bg: #FBF0E2;
+  --bd-red: #E5533D; --bd-red-bg: #FBE9E6;
+
+  --bd-provided: #2F6DB5; --bd-provided-bg: #E9F0F9;
+  --bd-fictive: #C77D16; --bd-fictive-bg: #FBF1E1;
+
+  --r-card: 8px; --r-btn: 6px; --r-pill: 14px;
+  --sh-card: 0 1px 3px rgba(0,0,0,.08);
+  --sh-modal: 0 8px 30px rgba(0,0,0,.18);
+  --nav-h: 60px;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+}
