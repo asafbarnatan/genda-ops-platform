@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../data/store.jsx';
-import { funnelLiquidity, channelScorecard, qualityComposite } from '../data/derive';
+import { funnelLiquidity, channelScorecard, qualityComposite, techniciansNeeded, recruitBy, fmtDate, activeProjects, daysBetween } from '../data/derive';
+import { TODAY } from '../data/seed';
 import { EntityModal } from '../components/Modal.jsx';
 import { Icon, PoolPill, FilterBar } from '../components/bits.jsx';
 import LogicPane from '../components/LogicPane.jsx';
@@ -8,6 +9,11 @@ import LogicPane from '../components/LogicPane.jsx';
 const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud Factory'];
 const REGIONS = ['Texas', 'Southeast', 'West'];
 const STAGES = ['Sourced', 'Screened', 'Onboarded', 'Deployed'];
+
+// staffing-demand risk → pill (per-project half of Part 1: needed vs assigned, by when)
+const STAFF_RISK = { ok: ['green', 'Staffed'], atrisk: ['amber', 'Recruit now'], critical: ['red', 'Gap inside SLA'], plan: ['grey', 'On plan'] };
+const RISK_ORDER = { critical: 0, atrisk: 1, plan: 2, ok: 3 };
+const staffPill = (risk) => { const [cls, label] = STAFF_RISK[risk]; return <span className={`pill ${cls}`}><span className={`dot-s ${cls}`} />{label}</span>; };
 
 function nextId(prefix, arr) {
   const nums = arr.map((r) => parseInt(String(r.id).replace(/\D/g, ''), 10)).filter((n) => !isNaN(n));
@@ -34,7 +40,7 @@ const techFields = [
 ];
 
 export default function Pipeline() {
-  const { candidates, technicians, add, update, remove } = useStore();
+  const { candidates, technicians, projects, add, update, remove, navigate } = useStore();
   const [f, setF] = useState({ channel: 'All', region: 'All' });
   const [modal, setModal] = useState(null);
 
@@ -44,6 +50,19 @@ export default function Pipeline() {
   const liquidity = funnelLiquidity(candidates);
   const scorecard = channelScorecard(technicians);
   const vendorInPipeline = candidates.filter((c) => isVendor(c.channel)).length; // keeps the projected vendor row honest as candidates change
+
+  // Per-project staffing demand — recomputes live as techs are assigned or dates change.
+  const staffingRows = activeProjects(projects).map((p) => {
+    const needed = techniciansNeeded(p);
+    const assigned = p.assignedTechs?.length || 0;
+    const gap = Math.max(0, needed - assigned);
+    const d = daysBetween(TODAY, p.requestedDelivery);
+    const risk = gap === 0 ? 'ok' : (d != null && d <= 14) ? 'critical' : (d != null && d <= 42) ? 'atrisk' : 'plan';
+    return { id: p.id, name: p.name, region: p.region, requestedDelivery: p.requestedDelivery, assignmentType: p.assignmentType, needed, assigned, gap, recruitBy: recruitBy(p), risk };
+  }).sort((a, b) => (RISK_ORDER[a.risk] - RISK_ORDER[b.risk]) || ((a.requestedDelivery || '') > (b.requestedDelivery || '') ? 1 : -1));
+  const totalNeeded = staffingRows.reduce((s, r) => s + r.needed, 0);
+  const totalAssigned = staffingRows.reduce((s, r) => s + r.assigned, 0);
+  const totalGap = staffingRows.reduce((s, r) => s + r.gap, 0);
   const deployed = techs.filter((t) => t.pool === 'Active');
   const benched = techs.filter((t) => t.pool === 'Benched');
   const removed = techs.filter((t) => t.pool === 'Removed');
@@ -107,6 +126,31 @@ export default function Pipeline() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Per-project staffing demand — the "per project" half of Part 1 (needed / assigned / gap / recruit-by) */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-head"><h3>Staffing demand by project</h3><span className="muted small">the "per project" view · technicians needed vs assigned, the gap, and the recruit-by date — click a row to open it</span></div>
+        <div className="table-scroll">
+          <table className="table" style={{ minWidth: 760 }}>
+            <thead><tr><th>Project</th><th>Region</th><th>Requested delivery</th><th className="num">Needed</th><th className="num">Assigned</th><th className="num">Gap</th><th>Recruit by</th><th>Staffing status</th></tr></thead>
+            <tbody>
+              {staffingRows.map((r) => (
+                <tr key={r.id} className="rowlink" onClick={() => navigate('schedule', r.id)}>
+                  <td><b>{r.name}</b> {r.assignmentType === 'Returning' && <span className="pill green" style={{ fontSize: 9 }}>↩ returning</span>}</td>
+                  <td>{r.region}</td>
+                  <td>{fmtDate(r.requestedDelivery)}</td>
+                  <td className="num">{r.needed}</td>
+                  <td className="num">{r.assigned}</td>
+                  <td className="num">{r.gap > 0 ? <b style={{ color: '#b23524' }}>{r.gap}</b> : '0'}</td>
+                  <td>{fmtDate(r.recruitBy)}</td>
+                  <td>{staffPill(r.risk)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="table-foot"><span>{staffingRows.length} active projects · <b>{totalNeeded}</b> technician-slots of demand</span><span className="muted">{totalAssigned} assigned · {totalGap} open · needed = floors/buildings rule (≤20 &amp; 1 bldg → 1 · 21-40 or 2 bldgs → 2 · 41+ → 3)</span></div>
       </div>
 
       {/* Funnel / liquidity analysis */}
