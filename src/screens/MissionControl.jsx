@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
 import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite, projectsByPhase } from '../data/derive';
-import { Tile, Icon } from '../components/bits.jsx';
+import { Tile } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
+import LogicPane from '../components/LogicPane.jsx';
 
 function TileDetail({ d, onGo, onClose }) {
   return (
@@ -135,6 +136,8 @@ export default function MissionControl() {
           <button className={!isOM ? 'active' : ''} onClick={() => setPersona('manager')}>Manager view</button>
         </div>
       </div>
+
+      <LogicPane part="mission" />
 
       <div className="stat-strip" style={{ marginBottom: 16 }}>
         <Tile label="Active projects" value={m.projects} sub="Genda Pro installs across the portfolio" />

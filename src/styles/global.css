@@ -296,3 +296,45 @@ select.cell-edit { -webkit-appearance: none; appearance: none; padding-right: 22
 .tech-toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--bd-border-strong); border-radius: var(--r-pill); padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bd-surface); }
 .tech-toggle.on { background: var(--bd-amber); border-color: var(--bd-amber); color: var(--bd-amber-ink); }
 .tech-toggle.off:hover { border-color: var(--bd-ink-3); }
+
+/* ============================================================
+   Elevation pass — consistent micro-interactions + polish.
+   Additive only: no layout or structural changes.
+   ============================================================ */
+.tile, .card, .kcard, .wf2-step, .acard, .insight { transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease, background-color .15s ease; }
+.table tr.rowlink { transition: background-color .12s ease; }
+.clickable-tile:hover { box-shadow: 0 6px 18px rgba(0,0,0,.10); transform: translateY(-2px); border-color: var(--bd-border-strong); }
+.tile.has-hint:hover { box-shadow: 0 6px 18px rgba(0,0,0,.10); }
+.kcard:hover { box-shadow: 0 4px 13px rgba(0,0,0,.10); transform: translateY(-1px); }
+.wf2-chip { transition: background-color .12s ease, color .12s ease; }
+.rowlink:hover td { background: #FBFAF6; }
+
+/* nav tab hover surface + smoother transitions */
+.nav-tab { transition: color .12s ease, background-color .12s ease; }
+.nav-tab:hover { background: var(--bd-surface-alt); }
+
+/* accessible, on-brand keyboard focus */
+:focus-visible { outline: 2px solid var(--bd-amber); outline-offset: 2px; border-radius: 4px; }
+
+/* refined scrollbars (timeline / wide tables) */
+*::-webkit-scrollbar { height: 10px; width: 10px; }
+*::-webkit-scrollbar-thumb { background: #D2D4D7; border-radius: 8px; border: 2px solid var(--bd-bg); }
+*::-webkit-scrollbar-thumb:hover { background: var(--bd-ink-3); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* brand text selection */
+::selection { background: rgba(230,178,60,.28); }
+
+/* ---- operating-logic pane (maps each screen to its assignment part + states the core logic) ---- */
+.logic-pane { position: relative; background: linear-gradient(180deg, #FAFAFD 0%, var(--bd-surface) 62%); border: 1px solid var(--bd-border); border-left: 3px solid var(--bd-indigo); border-radius: var(--r-card); box-shadow: var(--sh-card); padding: 13px 16px 14px; margin-bottom: 18px; }
+.lp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 7px; }
+.lp-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #4034b0; background: #ECEAFB; border-radius: 4px; padding: 3px 8px; }
+.lp-title { font-size: 13.5px; font-weight: 700; color: var(--bd-ink); }
+.lp-toggle { margin-left: auto; border: none; background: none; color: var(--bd-ink-3); font-size: 11px; font-weight: 700; letter-spacing: 0.02em; padding: 2px 4px; }
+.lp-toggle:hover { color: var(--bd-indigo); }
+.lp-q { font-size: 12.5px; color: var(--bd-ink-2); margin-bottom: 5px; line-height: 1.5; }
+.lp-qk { font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--bd-ink-3); margin-right: 8px; }
+.lp-thesis { font-size: 13px; color: var(--bd-ink); font-weight: 500; line-height: 1.55; max-width: 96ch; }
+.lp-points { margin: 11px 0 2px; padding-left: 18px; display: grid; gap: 6px; max-width: 96ch; }
+.lp-points li { font-size: 12.5px; color: var(--bd-ink-2); line-height: 1.5; }
+.lp-points li::marker { color: var(--bd-indigo); }

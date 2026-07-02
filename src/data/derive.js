@@ -50,6 +50,7 @@ export function projectReady(p) {
 export function projectStatus(p, today = TODAY) {
   if (p.junk || p.floors == null) return 'na';
   const d = daysBetween(today, p.requestedDelivery); // days until RD
+  if (d == null) return 'na';                   // no Requested Delivery date → not assessable
   const ready = projectReady(p);
   if (d < 0) return 'critical';                 // past Requested Delivery
   if (d <= 14) return ready ? 'atrisk' : 'critical'; // inside readiness buffer
@@ -62,14 +63,18 @@ export const STATUS_LABEL = { ontrack: 'On track', atrisk: 'At risk', critical: 
 export function statusReason(p, today = TODAY) {
   if (p.junk || p.floors == null) return 'Not enough data to assess.';
   const d = daysBetween(today, p.requestedDelivery);
+  if (d == null) return 'No Requested Delivery date is set yet, so this project is not assessable.';
   const ready = projectReady(p);
   const accel = (p.changeLog || []).some((c) => c.delta < -10);
-  if (d < 0) return `Overdue: the Requested Delivery date passed ${Math.abs(d)} days ago and the project is not delivered. This is a client-facing miss.`;
-  if (d <= 14 && !ready) return `Readiness gap: delivery is in ${d} days — inside the 10-day Readiness SLA buffer — and there is no Ready technician yet.`;
-  if (accel && d <= 60) return `Acceleration risk: the delivery date was pulled earlier (see History), compressing the readiness runway.`;
-  if (d <= 14 && ready) return `Delivery is in ${d} days — inside the 10-day Readiness SLA buffer. It is staffed, so confirm the technician and site access and monitor.`;
-  if (d <= 42 && (p.assignedTechs?.length === 0)) return `Inside the ~6-week recruit window with no technician assigned yet.`;
-  return `On track: delivery is ${d} days out, a technician is assigned, and readiness is on pace with buffer to spare.`;
+  // Acceleration is appended as context to whichever RAG branch is true, so the
+  // reason always matches the pill (same branch order as projectStatus) rather than
+  // overriding it — a Critical pill never shows an "At risk" explanation, and vice versa.
+  const accelNote = accel && d <= 60 ? ' Note: the delivery date was pulled earlier (see History), which compressed the readiness runway — the acceleration-as-risk signal.' : '';
+  if (d < 0) return `Overdue: the Requested Delivery date passed ${Math.abs(d)} days ago and the project is not delivered. This is a client-facing miss.${accelNote}`;
+  if (d <= 14 && !ready) return `Readiness gap: delivery is in ${d} days — inside the 10-day Readiness SLA buffer — and there is no Ready technician yet.${accelNote}`;
+  if (d <= 14 && ready) return `Delivery is in ${d} days — inside the 10-day Readiness SLA buffer. It is staffed, so confirm the technician and site access and monitor.${accelNote}`;
+  if (d <= 42 && (p.assignedTechs?.length === 0)) return `Inside the ~6-week recruit window with no technician assigned yet.${accelNote}`;
+  return `On track: delivery is ${d} days out, a technician is assigned, and readiness is on pace with buffer to spare.${accelNote}`;
 }
 
 // ---- staffing ----
@@ -83,15 +88,6 @@ export function techniciansNeeded(p) {
 // ---- collections ----
 export const activeProjects = (projects) => projects.filter((p) => !p.junk);
 export const activeTechs = (techs) => techs.filter((t) => t.pool === 'Active');
-
-// ---- funnel (Part 1) ----
-export function funnel(candidates, technicians) {
-  const stages = ['Sourced', 'Screened', 'Onboarded', 'Deployed'];
-  const counts = { Sourced: 0, Screened: 0, Onboarded: 0, Deployed: 0, Pool: technicians.length };
-  candidates.forEach((c) => { if (counts[c.stage] != null) counts[c.stage]++; });
-  counts.Deployed += activeTechs(technicians).length; // deployed roster sit in the pool/deployed lane
-  return { stages, counts };
-}
 
 // ---- channel scorecard (Part 1 Q3) ----
 export function channelScorecard(technicians) {
@@ -133,9 +129,9 @@ export function deriveAlerts(projects, technicians, today = TODAY) {
     const accel = (p.changeLog || []).some((c) => c.delta < -10);
     if (d < 0) push('critical', 'Schedule', 'Past Requested Delivery + not ready', p.name, 'Open recovery plan; escalate; notify Opportunity Owner', 'OM + RL', L, `${p.name} is ${Math.abs(d)} days past its Requested Delivery and not delivered. Client-facing miss.`);
     else if (d <= 14 && !ready) push('critical', 'Staffing', 'Readiness gap — inside 10-day Readiness SLA buffer', p.name, 'Redeploy a returning tech (fast path) or escalate the date', 'OM → RL', L, `${p.name} delivers in ${d} days with no Ready technician. Inside the Readiness SLA buffer.`);
-    else if (accel && d <= 60) push('critical', 'Schedule', 'Acceleration-as-risk — date pulled earlier', p.name, 'Recompute runway; cover with a returning tech in days, else escalate', 'OM + RL', L, `${p.name}'s date was pulled earlier, compressing the readiness runway (see change log).`);
+    else if (accel && d <= 60) push(projectStatus(p, today) === 'critical' ? 'critical' : 'action', 'Schedule', 'Acceleration-as-risk — date pulled earlier', p.name, 'Recompute runway; cover with a returning tech in days, else escalate', 'OM + RL', L, `${p.name}'s date was pulled earlier, compressing the readiness runway (see change log). Tier tracks the project's live status — critical only if it is no longer covered.`);
     else if (d <= 14 && ready) push('action', 'Schedule', 'Delivery inside the 10-day buffer', p.name, 'Confirm tech + site access; monitor', 'OM', L, `${p.name} delivers in ${d} days and is staffed. Confirm tech + site access.`);
-    else if (d <= 42 && p.assignedTechs.length === 0 && p.floors) push('action', 'Staffing', 'Recruitment window open — no tech assigned', p.name, 'Start recruiting now or reserve a pool tech', 'OM', L, `${p.name} entered its ~6-week recruit window with no assigned technician.`);
+    else if (d <= 42 && (p.assignedTechs?.length || 0) === 0 && p.floors) push('action', 'Staffing', 'Recruitment window open — no tech assigned', p.name, 'Start recruiting now or reserve a pool tech', 'OM', L, `${p.name} entered its ~6-week recruit window with no assigned technician.`);
     else if ((p.changeCount || 0) >= 3) push('action', 'Schedule', 'High volatility — date moved ≥3×', p.name, 'Investigate client/site cause; may pause recruiting until stable', 'OM', L, `${p.name}'s date has moved ${p.changeCount}× — unstable regardless of current position.`);
   });
 
@@ -173,7 +169,6 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
     returningDeploys, totalDeploys,
     // Band 2 — operational health
     readyTechCoverage: `${acts.length} ready`,
-    biggestLeak: 'Craigslist · 50% churn',
     atRisk: atrisk.length,
     avgQuality: avgQ,
     flagged,

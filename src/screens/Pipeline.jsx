@@ -3,6 +3,7 @@ import { useStore } from '../data/store.jsx';
 import { funnelLiquidity, channelScorecard, qualityComposite } from '../data/derive';
 import { EntityModal } from '../components/Modal.jsx';
 import { Icon, PoolPill, FilterBar } from '../components/bits.jsx';
+import LogicPane from '../components/LogicPane.jsx';
 
 const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud Factory'];
 const REGIONS = ['Texas', 'Southeast', 'West'];
@@ -42,6 +43,7 @@ export default function Pipeline() {
   const techs = technicians.filter(matchC);
   const liquidity = funnelLiquidity(candidates);
   const scorecard = channelScorecard(technicians);
+  const vendorInPipeline = candidates.filter((c) => isVendor(c.channel)).length; // keeps the projected vendor row honest as candidates change
   const deployed = techs.filter((t) => t.pool === 'Active');
   const benched = techs.filter((t) => t.pool === 'Benched');
   const removed = techs.filter((t) => t.pool === 'Removed');
@@ -63,6 +65,8 @@ export default function Pipeline() {
           <button className="btn btn-primary" onClick={() => openTech({ pool: 'Active', channel: 'Craigslist', region: 'Southeast', lead: 'Gil', candidateScore: 3 })}><Icon.plus /> Technician</button>
         </div>
       </div>
+
+      <LogicPane part="pipeline" />
 
       <FilterBar filters={[{ key: 'channel', label: 'Channel', options: CHANNELS }, { key: 'region', label: 'Region', options: REGIONS }]} values={f} onChange={(k, v) => setF((s) => ({ ...s, [k]: v }))} />
 
@@ -132,7 +136,7 @@ export default function Pipeline() {
             {scorecard.map((r) => (
               <tr key={r.channel}>
                 <td><b>{r.channel}</b> {r.projected && <span className="pill indigo">projected</span>}</td>
-                <td className="num">{r.projected ? '2 in pipeline' : r.count}</td>
+                <td className="num">{r.projected ? `${vendorInPipeline} in pipeline` : r.count}</td>
                 <td className="num">{r.avgQuality ?? '—'}</td>
                 <td className="num">{r.projected ? '—' : `${r.churnRate}%`}</td>
                 <td className="small muted">{r.channel === 'Craigslist' ? 'Floods leads, 50% churn → expensive per ready tech' : r.projected ? 'Pre-vetted, enters at Screened → the scale play' : r.count <= 2 ? 'Small sample' : ''}</td>

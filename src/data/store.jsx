@@ -1,6 +1,6 @@
 // Global store: holds raw state (projects/technicians/candidates), exposes CRUD,
 // persists through the dataAdapter, and tracks the OM/Manager persona.
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { activeAdapter } from './adapter';
 
 const StoreCtx = createContext(null);
@@ -11,6 +11,7 @@ export function StoreProvider({ children }) {
   const [route, setRoute] = useState({ screen: 'mission', focus: null }); // focus = entity id to auto-open
   const [acks, setAcks] = useState([]);       // acknowledged/"done" alert ids
   const [manualAlerts, setManualAlerts] = useState([]); // manually-added events
+  const manualSeq = useRef(0); // monotonic id counter — never reused, so delete-then-add can't collide
 
   useEffect(() => {
     activeAdapter.save({ projects: state.projects, technicians: state.technicians, candidates: state.candidates });
@@ -28,7 +29,7 @@ export function StoreProvider({ children }) {
     route, navigate: (screen, focus = null) => setRoute({ screen, focus }),
     clearFocus: () => setRoute((r) => ({ ...r, focus: null })),
     acks, toggleAck: (id) => setAcks((a) => a.includes(id) ? a.filter((x) => x !== id) : [...a, id]),
-    manualAlerts, addManualAlert: (a) => setManualAlerts((m) => [...m, { ...a, id: `M-${m.length + 1}`, manual: true }]),
+    manualAlerts, addManualAlert: (a) => setManualAlerts((m) => [...m, { ...a, id: `M-${++manualSeq.current}`, manual: true }]),
     removeManualAlert: (id) => setManualAlerts((m) => m.filter((x) => x.id !== id)),
 
     // generic CRUD, provenance auto-tagged fictive for user-added rows

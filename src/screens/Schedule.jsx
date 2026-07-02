@@ -7,6 +7,7 @@ import {
 import { STEPS, PHASES, BOUNDARY_STEP, TODAY } from '../data/seed';
 import { StatusPill, Icon, FilterBar } from '../components/bits.jsx';
 import { EntityModal } from '../components/Modal.jsx';
+import LogicPane from '../components/LogicPane.jsx';
 
 const REGIONS = ['Texas', 'Southeast', 'West'];
 const CAUSES = ['Construction ahead', 'Construction behind', 'Client update', 'Site access', 'Internal reschedule'];
@@ -234,10 +235,10 @@ export default function Schedule() {
       dd = new Date(dd.getFullYear(), dd.getMonth() + 1, 1);
     }
     for (let y = min.getFullYear(); y <= max.getFullYear(); y++) {
-      const s = Math.max(min.getTime(), new Date(y, 0, 1).getTime());
-      const e = Math.min(max.getTime(), new Date(y + 1, 0, 1).getTime());
-      if (e <= s) continue;
-      yearTicks.push({ p: pct(new Date((s + e) / 2).toISOString().slice(0, 10)), year: y });
+      const jan = new Date(y, 0, 1).getTime();
+      if (jan > max.getTime()) continue;
+      const posMs = Math.max(min.getTime(), jan);
+      yearTicks.push({ p: pct(new Date(posMs).toISOString().slice(0, 10)), year: y, boundary: jan >= min.getTime() });
     }
   }
 
@@ -261,7 +262,13 @@ export default function Schedule() {
   };
   const editStep = (p, label) => {
     const idx = parseInt(label, 10) - 1;
-    applyUpdate(p.id, { progress: idx }, { field: 'Step', old: `${(p.progress ?? 0) + 1}. ${STEPS[p.progress ?? 0].name}`, new: label, cause: 'Table edit', note: `Moved to step ${idx + 1}` });
+    const cur = effectiveStep(p);
+    if (idx === cur) return;
+    // Clear any ✕-block overrides on steps *below* the target so effectiveStep actually
+    // advances to idx — otherwise a stale block would pin the project back and silently
+    // discard this edit. Log the "old" position from the rendered effectiveStep, not raw progress.
+    const stepState = Object.fromEntries(Object.entries(p.stepState || {}).filter(([k]) => Number(k) >= idx));
+    applyUpdate(p.id, { progress: idx, stepState }, { field: 'Step', old: `${cur + 1}. ${STEPS[cur].name}`, new: label, cause: 'Table edit', note: `Moved to step ${idx + 1}` });
   };
 
   const stepOptions = STEPS.map((s) => `${s.i + 1}. ${s.name}`);
@@ -276,8 +283,11 @@ export default function Schedule() {
   ];
   const saveProj = (v) => {
     const progress = v.startStep ? parseInt(v.startStep, 10) - 1 : 0;
-    if (v.id && projects.some((p) => p.id === v.id)) update('projects', v.id, { ...v, progress });
-    else add('projects', { ...v, id: v.name, product: 'Genda Pro', country: 'United States', owner: 'OM', channel: v.channel || 'Craigslist', assignedTechs: [], stage: 'Qualification', recruitmentStatus: 'Pre-recruitment', training: 'Not Done', progress, stepState: {}, changeLog: [], changeCount: 0 });
+    if (v.id && projects.some((p) => p.id === v.id)) {
+      // keep the chosen "start step" authoritative: drop block overrides below it so effectiveStep lands there
+      const stepState = Object.fromEntries(Object.entries(v.stepState || {}).filter(([k]) => Number(k) >= progress));
+      update('projects', v.id, { ...v, progress, stepState });
+    } else add('projects', { ...v, id: v.name, product: 'Genda Pro', country: 'United States', owner: 'OM', channel: v.channel || 'Craigslist', requestedDelivery: v.requestedDelivery || null, assignedTechs: [], stage: 'Qualification', recruitmentStatus: 'Pre-recruitment', training: 'Not Done', progress, stepState: {}, changeLog: [], changeCount: 0 });
   };
 
   const changeBadge = (p) => {
@@ -296,6 +306,8 @@ export default function Schedule() {
           <button className="btn btn-primary" onClick={() => setModal({ region: 'Southeast', type: 'Residential', assignmentType: 'New-hire', buildings: 1, startStep: stepOptions[0] })}><Icon.plus /> Project</button>
         </div>
       </div>
+
+      <LogicPane part="schedule" />
 
       <FilterBar filters={filters} values={f} onChange={(k, v) => setF((s) => ({ ...s, [k]: v }))} right={<span className="small muted">{rows.length} projects · click any project to manage it</span>} />
 
@@ -318,10 +330,13 @@ export default function Schedule() {
           </div>
           <div className="card card-pad">
             <div className="tl-axis"><div /><div className="ticks" style={{ position: 'relative', height: 28, display: 'block' }}>
-              {yearTicks.map((t, i) => <span key={`y${i}`} style={{ position: 'absolute', left: `${t.p}%`, top: 0, transform: 'translateX(-50%)', fontSize: 14, fontWeight: 700, color: 'var(--bd-ink)' }}>{t.year}</span>)}
+              {yearTicks.map((t, i) => <span key={`y${i}`} style={{ position: 'absolute', left: `${t.p}%`, top: 0, fontSize: 14, fontWeight: 700, color: 'var(--bd-ink)', paddingLeft: t.boundary ? 6 : 0, borderLeft: t.boundary ? '2px solid var(--bd-border-strong)' : 'none', lineHeight: '15px' }}>{t.year}</span>)}
               {monthTicks.map((t, i) => <span key={`m${i}`} style={{ position: 'absolute', left: `${t.p}%`, bottom: 0, transform: 'translateX(-50%)', fontSize: 8, color: 'var(--bd-ink-3)' }}>{t.num}</span>)}
             </div></div>
             <div className="timeline">
+              {yearTicks.filter((t) => t.boundary).map((t, i) => (
+                <div key={`yd${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: `calc(${t.p}% + ${(160 * (1 - t.p / 100)).toFixed(1)}px)`, width: 1, background: 'var(--bd-border)', zIndex: 1, pointerEvents: 'none' }} />
+              ))}
               <div style={{ position: 'absolute', top: 0, bottom: 0, left: `calc(${pct(TODAY)}% + ${(160 * (1 - pct(TODAY) / 100)).toFixed(1)}px)`, width: 2, background: 'var(--bd-red)', opacity: 0.6, zIndex: 5, pointerEvents: 'none' }}>
                 <span style={{ position: 'absolute', bottom: -14, left: -14, fontSize: 9, fontWeight: 700, color: 'var(--bd-red)', background: 'var(--bd-surface)', padding: '0 3px', borderRadius: 3 }}>Today</span>
               </div>
@@ -390,7 +405,7 @@ export default function Schedule() {
         </div>
       )}
 
-      {drawerProject && <ProcessDrawer project={drawerProject} technicians={technicians} onClose={() => setDrawer(null)} onEdit={() => { setModal({ ...drawerProject, startStep: stepOptions[drawerProject.progress || 0] }); setDrawer(null); }} onToggleStep={(i, cur) => toggleStep(drawerProject.id, i, cur)} onUpdate={(patch, log) => applyUpdate(drawerProject.id, patch, log)} />}
+      {drawerProject && <ProcessDrawer project={drawerProject} technicians={technicians} onClose={() => setDrawer(null)} onEdit={() => { setModal({ ...drawerProject, startStep: stepOptions[effectiveStep(drawerProject)] }); setDrawer(null); }} onToggleStep={(i, cur) => toggleStep(drawerProject.id, i, cur)} onUpdate={(patch, log) => applyUpdate(drawerProject.id, patch, log)} />}
       {modal && <EntityModal title={modal.id && projects.some((p) => p.id === modal.id) ? `Edit ${modal.name}` : 'Add project'} fields={projFields} initial={modal} onSave={saveProj} onClose={() => setModal(null)} onDelete={modal.id && projects.some((p) => p.id === modal.id) ? () => remove('projects', modal.id) : undefined} />}
     </div>
   );

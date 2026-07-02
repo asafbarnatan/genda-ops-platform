@@ -1,6 +1,7 @@
 import { useStore } from '../data/store.jsx';
 import { STEPS } from '../data/seed';
-import { projectsAtStep, topBottleneck, activeProjects } from '../data/derive';
+import { projectsAtStep, topBottleneck, activeProjects, effectiveStep } from '../data/derive';
+import LogicPane from '../components/LogicPane.jsx';
 
 const RETURN_SKIP_PHASES = new Set(['Buildots Training', 'Equipment Setup']);
 const phaseSteps = (phase) => STEPS.filter((s) => s.phase === phase);
@@ -51,9 +52,13 @@ export default function Process() {
   const chip = (id) => navigate('schedule', id);
   const move = (id, stepIndex) => {
     const p = projects.find((x) => x.id === id);
-    if (!p || p.progress === stepIndex) return;
-    const entry = { id: `c-${Date.now()}`, ts: new Date().toISOString().slice(0, 10), field: 'Progress', old: STEPS[p.progress]?.name, new: STEPS[stepIndex].name, delta: 0, cause: 'Moved on Process board', by: 'OM', note: `Advanced to step ${stepIndex + 1}` };
-    update('projects', id, { progress: stepIndex, changeLog: [...(p.changeLog || []), entry] });
+    if (!p) return;
+    const cur = effectiveStep(p); // the chip's visible position (honors blocks + returning skips)
+    if (cur === stepIndex) return;
+    // clear block overrides below the target so the move actually takes effect and isn't pinned back
+    const stepState = Object.fromEntries(Object.entries(p.stepState || {}).filter(([k]) => Number(k) >= stepIndex));
+    const entry = { id: `c-${Date.now()}`, ts: new Date().toISOString().slice(0, 10), field: 'Progress', old: STEPS[cur]?.name, new: STEPS[stepIndex].name, delta: 0, cause: 'Moved on Process board', by: 'OM', note: `Advanced to step ${stepIndex + 1}` };
+    update('projects', id, { progress: stepIndex, stepState, changeLog: [...(p.changeLog || []), entry] });
   };
   const Arrow = () => <div className="wf2-arrow" style={{ textAlign: 'center' }}>↓</div>;
 
@@ -62,6 +67,8 @@ export default function Process() {
       <div className="page-head">
         <div><h1 className="page-title">Process & Optimisation</h1><div className="page-sub">The 24-step template as a live workflow · drag a project between steps to advance it — the change flows to the Schedule, timeline, table, and the project</div></div>
       </div>
+
+      <LogicPane part="process" />
 
       <div className="row wrap" style={{ gap: 12, marginBottom: 16 }}>
         <div className="card card-pad" style={{ flex: '1 1 340px' }}>
