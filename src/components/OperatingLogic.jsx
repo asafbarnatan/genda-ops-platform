@@ -85,7 +85,7 @@ const CONTENT = {
     q: 'What the system flags automatically; at least five trigger-to-action rules; how you prioritise urgent vs informational.',
     groups: [
       { h: 'The framework', items: [
-        'Judged by what it does NOT interrupt you for. Three tiers by time-to-consequence × client-impact.',
+        'Judged by what it does NOT interrupt you for. Three tiers by time-to-consequence × client-impact — Critical (act now), At risk (this week), Monitor (awareness only). Same three tiers everywhere: the board, the Mission Control queue, and here.',
         'Tie-break: anything threatening the Readiness SLA or client data outranks internal efficiency.',
         'The system watches all 12 signals; attention is curated to the five below.',
       ] },
@@ -101,7 +101,7 @@ const CONTENT = {
       } },
       { h: 'Routing', table: {
         cols: ['Tier', 'How it reaches you'],
-        rows: [['🔴 Critical', 'Slack + email now; pins to Act Now'], ['🟠 Action', 'This Week queue + daily digest'], ['🟢 Info', 'digest only — nobody pinged']],
+        rows: [['🔴 Critical', 'Slack + email now; pins to the Critical column'], ['🟠 At risk', 'This-week queue + daily digest'], ['🟢 Monitor', 'digest only — nobody pinged']],
       } },
     ],
   },

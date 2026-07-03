@@ -50,6 +50,9 @@ export const fmtDate = (s) => {
 // readiness SLA (10 business days ≈ 14 calendar) and recruit-by (~6 weeks)
 export const readinessBy = (p) => addDays(p.requestedDelivery, -14);
 export const recruitBy = (p) => addDays(p.requestedDelivery, -42);
+// A project is "in flight" once its recruit-by window has opened; before that it is a
+// future opportunity still in planning (its build hasn't started, so behind/ahead is n/a).
+export const buildStarted = (p, today = TODAY) => { const r = recruitBy(p); return r ? r <= today : false; };
 
 // ---- project status (shared RAG) ----
 export function projectReady(p) {
@@ -114,6 +117,14 @@ export function channelScorecard(technicians) {
   rows.push({ channel: 'Vendor · Cloud Factory', count: 0, avgQuality: null, churnRate: 0, projected: true });
   return rows;
 }
+
+// Uniform alert-tier vocabulary across the whole platform: Critical / At risk / Monitor.
+export const ALERT_TIERS = [
+  { key: 'critical', label: 'Critical', dot: 'red', sub: '~24-48h' },
+  { key: 'action', label: 'At risk', dot: 'amber', sub: 'you own the timing' },
+  { key: 'info', label: 'Monitor', dot: 'green', sub: 'awareness only' },
+];
+export const alertTierLabel = (k) => ({ critical: 'Critical', action: 'At risk', info: 'Monitor' }[k] || k);
 
 // ---- alerts (Part 4) — derived live from state ----
 export function deriveAlerts(projects, technicians, today = TODAY) {
@@ -235,11 +246,14 @@ export function projectsAtStep(projects) {
   activeProjects(projects).forEach((p) => { map[effectiveStep(p)].push(p); });
   return map;
 }
-// The live bottleneck = the phase where the most projects actually sit right now (provable).
+// The live bottleneck = the phase where the most IN-FLIGHT projects sit right now (provable).
+// Future opportunities still in planning are excluded — they cluster at intake by definition
+// and would otherwise mask the real operational bottleneck among active projects.
 export function topBottleneck(projects) {
-  const byPhase = projectsByPhase(projects);
+  const map = {}; PHASES.forEach((p) => (map[p] = []));
+  activeProjects(projects).filter((p) => buildStarted(p)).forEach((p) => { map[phaseOfProgress(p)]?.push(p); });
   let best = { phase: '—', count: 0 };
-  PHASES.forEach((ph) => { if (byPhase[ph].length > best.count) best = { phase: ph, count: byPhase[ph].length }; });
+  PHASES.forEach((ph) => { if (map[ph].length > best.count) best = { phase: ph, count: map[ph].length }; });
   return best;
 }
 export function recurringVisits(project) {
@@ -258,9 +272,20 @@ export function assignedNames(project, technicians) {
 // 23=project end, linearly interpolated between.
 export function plannedStepDates(p) {
   const rd = p.requestedDelivery;
-  // stages complete within the build window (recruit-by → delivery + ~3 wks); beyond that
-  // the project is in ongoing delivery (shown as recurring-visit dots, not stage blocks).
-  const anchors = [[0, recruitBy(p)], [13, readinessBy(p)], [16, rd], [23, addDays(rd, 21)]].filter(([, d]) => d);
+  // Back-schedule the 24 steps across the project's real milestones so First Installation
+  // (step 16) lands exactly on the Requested Delivery date and the row runs to project end:
+  //   0-6  Pre-Signature + Signature (sales) — a ~2-month sales window BEFORE recruit-by
+  //   7-13 prep (Training / Equipment / readiness) — recruit-by → ready-by
+  //   14-16 first installation — ready-by → delivery (step 16 = delivery)
+  //   17-20 upload + review — the ~3 weeks after delivery
+  //   21-23 ongoing delivery + billing — through project end (with quarterly visits)
+  // step 20 (last first-installation review) closes ~1 month after delivery, step 21 (start of
+  // ongoing delivery) ~2 weeks after that — this keeps the discrete build steps NARROW; only the
+  // ongoing tail (21→23) fans out across the long operational period to project end.
+  const anchors = [
+    [0, addDays(recruitBy(p), -60)], [6, recruitBy(p)], [13, readinessBy(p)],
+    [16, rd], [20, addDays(rd, 30)], [21, addDays(rd, 45)], [23, p.projectEnd || addDays(rd, 120)],
+  ].filter(([, d]) => d);
   if (anchors.length < 2) return STEPS.map(() => rd || null);
   const ms = (s) => parseDate(s).getTime();
   const at = (i) => {

@@ -6,7 +6,7 @@ import {
 } from '../data/derive';
 import { STEPS, PHASES, BOUNDARY_STEP } from '../data/seed';
 import { StatusPill, Icon, FilterBar } from '../components/bits.jsx';
-import { EntityModal } from '../components/Modal.jsx';
+import { EntityModal, Modal } from '../components/Modal.jsx';
 import OperatingLogic from '../components/OperatingLogic.jsx';
 import GanttTimeline from '../components/GanttTimeline.jsx';
 
@@ -205,6 +205,7 @@ export default function Schedule() {
   const [f, setF] = useState({ region: 'All', account: 'All', type: 'All' });
   const [drawer, setDrawer] = useState(null);
   const [modal, setModal] = useState(null);
+  const [stageGuide, setStageGuide] = useState(false);
 
   useEffect(() => {
     if (route.focus) { const p = projects.find((x) => x.id === route.focus); if (p) setDrawer(p.id); clearFocus(); }
@@ -295,16 +296,35 @@ export default function Schedule() {
             <span className="micro" style={{ letterSpacing: '0.05em' }}>Stage</span>
             <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-green)' }} /> Done</span>
             <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-amber-s)' }} /> In progress</span>
-            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-red)' }} /> Blocked</span>
+            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-red)' }} /> Behind (past its planned date)</span>
             <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-ink-3)' }} /> Skipped (returning)</span>
-            <span className="lk"><span className="gswatch" style={{ background: '#EBECEE', border: '1px solid var(--bd-border)' }} /> Not started</span>
+            <span className="lk"><span className="gswatch" style={{ background: '#EBECEE', border: '1px solid var(--bd-border)' }} /> Upcoming</span>
+            <span className="lk"><span className="grd-legend" /> Requested delivery (First Installation due)</span>
             <span className="lk"><span className="dot-s grey" /> Quarterly visit</span>
-            <span className="lk"><span style={{ display: 'inline-block', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '6px solid var(--bd-ink)', verticalAlign: 'middle' }} /> You are here</span>
-            <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-red)', verticalAlign: 'middle' }} /> Today = where you should be</span>
+            <span className="lk"><span style={{ display: 'inline-block', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '6px solid var(--bd-ink)', verticalAlign: 'middle' }} /> Current stage</span>
+            <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-ink-3)', verticalAlign: 'middle' }} /> Today</span>
+            <span className="spacer" />
+            <button className="btn btn-sm" onClick={() => setStageGuide(true)} title="What each of the 24 stage numbers means">Stage guide</button>
             <span style={{ flexBasis: '100%', height: 0 }} />
-            <span className="small muted">Each square is one of the 24 process steps at its planned date. The gap between a project's caret and the Today line is how far ahead / behind it is. Colours are live from the process — a move on the Process board or a ✓/✕ in the project drawer recolours the square here.</span>
+            <span className="small muted">Each square is one of the 24 process steps on a real time axis, running to the project's end date. First Installation sits on the ◆ Requested-delivery marker. A square goes red once it is past its planned date and still open — that is how far behind the project is versus where it should be by Today. Colours are live from the process: a move on the Process board or a ✓/✕ in the project drawer recolours the square here.</span>
           </div>
           <GanttTimeline projects={sorted} onOpen={(id) => setDrawer(id)} />
+          {stageGuide && (
+            <Modal title="Stage guide — the 24 process steps" onClose={() => setStageGuide(false)} footer={<button className="btn-text" onClick={() => setStageGuide(false)}>Close</button>}>
+              <div className="small muted" style={{ marginBottom: 12 }}>Every square on the timeline is one of these steps, grouped into the 7 phases. Returning-tech projects skip Buildots Training + PPE (the fast path).</div>
+              {PHASES.map((ph) => (
+                <div key={ph} className="stage-guide-phase">
+                  <div className="stage-guide-h">{ph}</div>
+                  {STEPS.filter((s) => s.phase === ph).map((s) => (
+                    <div key={s.i} className="stage-guide-row">
+                      <span className="stage-guide-n">{s.i + 1}</span>
+                      <div><b>{s.name}</b><div className="small muted">{s.info}</div></div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </Modal>
+          )}
         </>
       ) : (
         <div className="card table-scroll">

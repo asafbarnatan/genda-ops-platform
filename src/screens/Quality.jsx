@@ -120,13 +120,12 @@ export default function Quality() {
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-head"><h3>Technician roster</h3><span className="muted small">click a row → RL feedback form + scorecard</span></div>
         <table className="table">
-          <thead><tr><th>Technician</th><th>Channel</th><th>Region</th><th className="num">Cand.</th><th className="num">Quality</th><th className="num">Installs</th><th>Pool</th></tr></thead>
+          <thead><tr><th>Technician</th><th>Channel</th><th>Region</th><th className="num">Quality</th><th className="num">Installs</th><th>Pool</th></tr></thead>
           <tbody>
             {rows.map((t) => (
               <tr key={t.id} className="rowlink" onClick={() => setSel(t)}>
-                <td><b>{t.name}</b> <span className="small muted">{t.id}</span></td>
+                <td><b>{t.name}</b></td>
                 <td>{t.channel}</td><td>{t.region}</td>
-                <td className="num">{t.candidateScore ?? '—'}</td>
                 <td className="num"><b>{qualityComposite(t.metrics)}</b></td>
                 <td className="num">{t.installs}</td>
                 <td><PoolPill pool={t.pool} /></td>

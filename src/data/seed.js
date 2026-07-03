@@ -3,7 +3,7 @@
 // `fictive` rows (technicians, candidates, scores, assignments) are ours, per 4_Data_Layer.md.
 // This module is the initial seed; the store loads it into localStorage on first run.
 
-export const SEED_VERSION = 'v5';
+export const SEED_VERSION = 'v6';
 export const TODAY = '2026-07-01'; // the operation's "today" (matches the strategy docs)
 
 // ---------------------------------------------------------------------------
@@ -62,10 +62,13 @@ export const PHASES = [...new Set(STEPS.map((s) => s.phase))];
 
 // where each project currently sits on the 24-step spine (from recruitment status)
 const PROGRESS_BY_STATUS = { 'Pre-recruitment': 3, Onboarded: 12, Scheduled: 16, Deployed: 21 };
-// Date-consistent current step per project: near-delivery projects are further along, far-future
-// ones are still early — so the timeline's planned-vs-actual (and the Process board) read true.
-// 27th Street is deliberately behind (overdue); most far-future work sits in early sales.
-const PROGRESS_BY_ID = { '27th Street': 18, JPSM: 15, BBH: 14, 'Hub At': 7, WRH: 5, Z1: 2, RISE: 1, WAP: 1, MTX: 0, 'The WWE': 0, 'P Health': 0, 'Buck D': 0, UGA: 0 };
+// Date-consistent current step per project, aligned to each project's own back-schedule
+// (recruit-by → ready-by → delivery). Near-delivery projects sit at First Installation; the
+// three converging there are the live bottleneck. Far-future projects (delivering 2027) are
+// still in early sales — their build window hasn't opened, so they read "planning". 27th Street
+// is deliberately behind: overdue and NOT yet installed (step 14), matching its critical status
+// (its status said "not delivered", so it must sit before First Installation, step 16).
+const PROGRESS_BY_ID = { '27th Street': 14, JPSM: 15, BBH: 15, 'Hub At': 9, WRH: 8, Z1: 4, RISE: 1, WAP: 2, MTX: 1, 'The WWE': 1, 'P Health': 2, 'Buck D': 3, UGA: 1 };
 const statusForProgress = (pr) => (pr >= 21 ? 'Deployed' : pr >= 13 ? 'Scheduled' : pr >= 7 ? 'Onboarded' : 'Pre-recruitment');
 // Returning-tech projects (fast path): skip Buildots Training + PPE
 const RETURNING = new Set(['RISE', 'Z1']);

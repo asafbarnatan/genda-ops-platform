@@ -1,12 +1,14 @@
 import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { STEPS, TODAY } from '../data/seed';
-import { plannedStepDates, plannedStepToday, effectiveStep, stepStatus, recruitBy, recurringVisits, parseDate, projectStatus, addDays } from '../data/derive';
+import { plannedStepDates, plannedStepToday, effectiveStep, stepStatus, recruitBy, buildStarted, recurringVisits, parseDate, projectStatus, addDays, fmtDate } from '../data/derive';
 
 // Zoomable, pannable stage Gantt. Each project's 24 steps are blocks on a real time axis;
 // block colour = stepStatus(p, i) (the SAME derivation the Process board + drawer use, so
-// any edit there recolours the square live). Today line = where you should be (planned);
-// the caret = where you are (effectiveStep). Range menu zooms; scroll sideways to pan.
-const NAME_W = 152, ROW_H = 34, DAY = 86400000;
+// any edit there recolours the square live). First Installation (step 16) sits on the
+// Requested-Delivery marker (◆). A step still open past its planned date reads red = behind.
+// Today line = where you should be; the caret (▲) = the current stage. Range menu zooms;
+// scroll sideways to pan through the full project period to its end date.
+const NAME_W = 158, ROW_H = 34, DAY = 86400000;
 const RANGES = [{ k: '1W', d: 7 }, { k: '2W', d: 14 }, { k: '1M', d: 30 }, { k: '3M', d: 90 }, { k: '6M', d: 180 }, { k: '1Y', d: 365 }, { k: 'All', d: null }];
 const STATUS_COLOR = { done: 'var(--bd-green)', doing: 'var(--bd-amber-s)', blocked: 'var(--bd-red)', skipped: 'var(--bd-ink-3)', todo: '#EBECEE' };
 
@@ -72,28 +74,41 @@ export default function GanttTimeline({ projects, onOpen }) {
             const eff = effectiveStep(p);
             const should = plannedStepToday(p);
             const gap = should - eff; // >0 behind
+            const started = buildStarted(p);
             const st = projectStatus(p);
             const dot = st === 'ontrack' ? 'green' : st === 'atrisk' ? 'amber' : st === 'critical' ? 'red' : 'grey';
+            const rd = p.requestedDelivery;
             return (
               <div className="gantt-row" key={p.id} style={{ height: ROW_H }}>
                 <div className="gantt-name rowlink" style={{ width: NAME_W }} onClick={() => onOpen(p.id)} title={`Open ${p.name}`}>
                   <span className={`dot-s ${dot}`} /><span className="gname">{p.name}</span>
-                  {gap > 0 ? <span className="gbadge behind">{gap} behind</span> : gap < 0 ? <span className="gbadge ahead">{-gap} ahead</span> : <span className="gbadge ontrack">on track</span>}
+                  {!started ? <span className="gbadge planning">planning</span>
+                    : gap > 0 ? <span className="gbadge behind">{gap} behind</span>
+                    : gap < 0 ? <span className="gbadge ahead">{-gap} ahead</span>
+                    : <span className="gbadge ontrack">on track</span>}
                 </div>
                 {STEPS.map((s, i) => {
                   const startD = planned[i]; if (!startD) return null;
                   const stopD = planned[i + 1] || addDays(startD, 12);
                   const left = NAME_W + x(startD), w = Math.max(3, x(stopD) - x(startD));
                   const status = stepStatus(p, i);
+                  // a discrete build step (0-20) still open past its planned date = behind → red.
+                  // the wide operational tail (21-23, ongoing delivery + billing) is never flagged
+                  // red — it would paint a huge bar to project end and just means "not started yet".
+                  const overdue = status === 'todo' && started && startD < TODAY && i < 21;
+                  const bg = overdue ? 'var(--bd-red)' : (STATUS_COLOR[status] || STATUS_COLOR.todo);
+                  const light = status === 'todo' && !overdue;
+                  const tip = `${i + 1}. ${s.name}${overdue ? ' — overdue (planned ' + fmtDate(startD) + ')' : ''}${s.info ? '\n' + s.info : ''}`;
                   return (
-                    <div key={i} className="gblock" title={`${i + 1}. ${s.name}${s.info ? ' — ' + s.info : ''}`}
-                      style={{ left, width: w, background: STATUS_COLOR[status] || STATUS_COLOR.todo, borderColor: status === 'todo' ? 'var(--bd-border)' : 'transparent' }}>
-                      {w >= 15 && <span className="gblk-n" style={{ color: status === 'todo' ? '#8A8B8D' : '#fff' }}>{i + 1}</span>}
+                    <div key={i} className="gblock" title={tip}
+                      style={{ left, width: w, background: bg, borderColor: light ? 'var(--bd-border)' : 'transparent' }}>
+                      {w >= 15 && <span className="gblk-n" style={{ color: light ? '#8A8B8D' : '#fff' }}>{i + 1}</span>}
                     </div>
                   );
                 })}
                 {recurringVisits(p).map((rv, i) => <div key={`rv${i}`} className="gvisit" style={{ left: NAME_W + x(rv) }} title={`recurring visit ${rv}`} />)}
-                <div className="gcaret" style={{ left: NAME_W + x(planned[eff] || TODAY) }} title={`you are at step ${eff + 1} of 24`} />
+                {rd && <div className="grd" style={{ left: NAME_W + x(rd) }} title={`Requested delivery — ${fmtDate(rd)} (First Installation is due here)`} />}
+                <div className="gcaret" style={{ left: NAME_W + x(planned[eff] || TODAY) }} title={`Current stage — step ${eff + 1}: ${STEPS[eff].name}`} />
               </div>
             );
           })}

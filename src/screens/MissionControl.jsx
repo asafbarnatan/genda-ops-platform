@@ -127,8 +127,8 @@ export default function MissionControl() {
       formula: `The process phase with the most projects right now: ${m.bottleneckCount} of ${aps.length} sit in "${m.topBottleneck}".`,
       items: bnProjects.map((p) => ({ name: p.name, note: 'in this phase', focus: p.id })),
     },
-    alertCritical: { title: 'Alerts · critical', value: m.alertCritical, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Alerts that hit a client outcome or breach the Readiness SLA.', items: alerts.filter((a) => a.tier === 'critical').map((a) => ({ name: a.trigger, note: a.subject, bad: true })) },
-    alertAction: { title: 'Alerts · action', value: m.alertAction, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Real issues you own the timing on — handle this week.', items: alerts.filter((a) => a.tier === 'action').map((a) => ({ name: a.trigger, note: a.subject, warn: true })) },
+    alertCritical: { title: 'Alerts · Critical', value: m.alertCritical, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Alerts that hit a client outcome or breach the Readiness SLA.', items: alerts.filter((a) => a.tier === 'critical').map((a) => ({ name: a.trigger, note: a.subject, bad: true })) },
+    alertAction: { title: 'Alerts · At risk', value: m.alertAction, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Real issues you own the timing on — handle this week.', items: alerts.filter((a) => a.tier === 'action').map((a) => ({ name: a.trigger, note: a.subject, warn: true })) },
     missingTechs: {
       title: 'Missing technicians', value: m.missingTechs, link: { screen: 'pipeline', label: 'Open the Pipeline' },
       why: 'The unfilled staffing demand across the portfolio — how many more technicians the active projects still need. This is exactly what the recruitment pipeline and the vendor pilot exist to close.',
@@ -212,15 +212,15 @@ export default function MissionControl() {
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
         <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>{m.topBottleneck}</span>} onOpen={() => setDetail('bottleneck')}
           hint={`The process phase with the most projects right now — where the queue actually is (${m.bottleneckCount} projects). Click for the list.`} />
-        <Tile accent="red" label="Alerts · critical" value={m.alertCritical} onOpen={() => setDetail('alertCritical')} hint="Alerts that hit a client outcome or breach the Readiness SLA. Act now (~24-48h). Click to see them." />
-        <Tile accent="amber" label="Alerts · action" value={m.alertAction} onOpen={() => setDetail('alertAction')} hint="Real issues you own the timing on — handle this week. Click to see them." />
+        <Tile accent="red" label="Alerts · Critical" value={m.alertCritical} onOpen={() => setDetail('alertCritical')} hint="Alerts that hit a client outcome or breach the Readiness SLA. Act now (~24-48h). Click to see them." />
+        <Tile accent="amber" label="Alerts · At risk" value={m.alertAction} onOpen={() => setDetail('alertAction')} hint="Real issues you own the timing on — handle this week. Click to see them." />
         <Tile accent={m.missingTechs > 0 ? 'amber' : 'green'} label="Missing technicians" value={m.missingTechs} onOpen={() => setDetail('missingTechs')}
           hint="How many more technicians the active projects still need (needed − assigned), excluding gaps you've accepted. Click for the per-project breakdown." />
       </div>
 
       {isOM ? (
         <div className="card">
-          <div className="card-head"><h3>Today · what needs action</h3><span className="muted small">🔴 Act Now → 🟠 This Week · hover for detail, Open to jump to the source</span></div>
+          <div className="card-head"><h3>Today · what needs action</h3><span className="muted small">🔴 Critical → 🟠 At risk · hover for detail, Open to jump to the source</span></div>
           <div className="card-pad">
             {open.map((a) => (
               <ActionRow key={a.id} a={a} onDone={() => toggleAck(a.id)} onSnooze={() => toggleSnooze(a.id)} onOpen={() => a.link && navigate(a.link.screen, a.link.focus)} />

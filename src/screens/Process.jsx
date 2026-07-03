@@ -1,6 +1,6 @@
 import { useStore } from '../data/store.jsx';
 import { STEPS } from '../data/seed';
-import { projectsAtStep, topBottleneck, activeProjects, effectiveStep, RETURN_SKIP } from '../data/derive';
+import { projectsAtStep, topBottleneck, activeProjects, effectiveStep, buildStarted, RETURN_SKIP } from '../data/derive';
 import OperatingLogic from '../components/OperatingLogic.jsx';
 
 const phaseSteps = (phase) => STEPS.filter((s) => s.phase === phase);
@@ -32,7 +32,7 @@ function PhaseBlock({ phase, atStep, onChip, onMove, small, half, bnPhase }) {
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { const id = e.dataTransfer.getData('pid'); if (id) onMove(id, s.i); }}>
               <div className="st-head"><span className="small muted mono-num">{s.i + 1}</span><span>{s.name}</span>{stepSkip && <span className="pill indigo" style={{ fontSize: 9 }}>skipped on returning path</span>}{ps.length > 0 && <span className="c">{ps.length}</span>}</div>
-              {ps.length > 0 && <div className="wf2-chips">{ps.map((p) => <span key={p.id} className="wf2-chip" draggable onDragStart={(e) => e.dataTransfer.setData('pid', p.id)} onClick={() => onChip(p.id)}>{p.name}</span>)}</div>}
+              {ps.length > 0 && <div className="wf2-chips">{ps.map((p) => <span key={p.id} className={`wf2-chip ${buildStarted(p) ? '' : 'planning'}`} title={buildStarted(p) ? '' : 'Future opportunity — build window has not opened yet'} draggable onDragStart={(e) => e.dataTransfer.setData('pid', p.id)} onClick={() => onChip(p.id)}>{p.name}</span>)}</div>}
               {s.info && <div className="step-tip">{s.info}</div>}
             </div>
           );
@@ -53,6 +53,8 @@ export default function Process() {
   const atStep = projectsAtStep(projects);
   const bn = topBottleneck(projects);
   const total = activeProjects(projects).length;
+  const inFlight = activeProjects(projects).filter((p) => buildStarted(p)).length;
+  const planningCount = total - inFlight;
   const chip = (id) => navigate('schedule', id);
   const move = (id, stepIndex) => {
     const p = projects.find((x) => x.id === id);
@@ -85,7 +87,10 @@ export default function Process() {
           <div className="micro" style={{ marginBottom: 6 }}>Live bottleneck — where projects actually sit</div>
           {total === 0
             ? <div style={{ fontSize: 14, fontWeight: 600 }}>No active projects right now — add one to see where the queue forms.</div>
-            : <div style={{ fontSize: 14, fontWeight: 600 }}><b style={{ color: '#b23524' }}>{bn.phase}</b> holds {bn.count} of {total} active projects right now (highlighted below). That is the first place to unblock.</div>}
+            : <>
+              <div style={{ fontSize: 14, fontWeight: 600 }}><b style={{ color: '#b23524' }}>{bn.phase}</b> holds {bn.count} of {inFlight} in-flight projects (highlighted below) — the first place to unblock.</div>
+              {planningCount > 0 && <div className="small muted" style={{ marginTop: 5 }}>The {planningCount} muted chips are future opportunities still in planning (delivering later — their build window has not opened), so they cluster at intake by definition and are excluded from the bottleneck.</div>}
+            </>}
         </div>
       </div>
 
