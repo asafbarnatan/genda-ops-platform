@@ -252,6 +252,38 @@ export function assignedNames(project, technicians) {
   return (project.assignedTechs || []).map((id) => technicians.find((t) => t.id === id)?.name || id);
 }
 
+// Planned schedule: back-schedule the 24 steps across the project's milestones so the
+// timeline can show "where you should be today" (planned) vs effectiveStep ("where you
+// are"). Fictive but consistent — anchors step 0=recruit-by, 13=ready-by, 16=delivery,
+// 23=project end, linearly interpolated between.
+export function plannedStepDates(p) {
+  const rd = p.requestedDelivery;
+  // stages complete within the build window (recruit-by → delivery + ~3 wks); beyond that
+  // the project is in ongoing delivery (shown as recurring-visit dots, not stage blocks).
+  const anchors = [[0, recruitBy(p)], [13, readinessBy(p)], [16, rd], [23, addDays(rd, 21)]].filter(([, d]) => d);
+  if (anchors.length < 2) return STEPS.map(() => rd || null);
+  const ms = (s) => parseDate(s).getTime();
+  const at = (i) => {
+    if (i <= anchors[0][0]) return anchors[0][1];
+    if (i >= anchors[anchors.length - 1][0]) return anchors[anchors.length - 1][1];
+    for (let k = 0; k < anchors.length - 1; k++) {
+      const [ai, ad] = anchors[k], [bi, bd] = anchors[k + 1];
+      if (i >= ai && i <= bi) {
+        const t = (i - ai) / (bi - ai || 1);
+        return new Date(ms(ad) + t * (ms(bd) - ms(ad))).toISOString().slice(0, 10);
+      }
+    }
+    return rd;
+  };
+  return STEPS.map((s) => at(s.i));
+}
+export function plannedStepToday(p, today = TODAY) {
+  const d = plannedStepDates(p);
+  let idx = 0;
+  for (let i = 0; i < d.length; i++) if (d[i] && d[i] <= today) idx = i;
+  return idx;
+}
+
 // ---- funnel liquidity (Part 1) ----
 export function funnelLiquidity(candidates) {
   const stages = ['Sourced', 'Screened', 'Onboarded', 'Deployed'];

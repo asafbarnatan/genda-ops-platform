@@ -379,3 +379,29 @@ select.cell-edit { -webkit-appearance: none; appearance: none; padding-right: 22
 .tcard .pop { display: none; position: absolute; z-index: 30; left: 10px; right: 10px; top: calc(100% - 4px); background: var(--bd-ink); color: #fff; border-radius: 8px; padding: 10px 12px; font-size: 12px; line-height: 1.5; box-shadow: var(--sh-modal); }
 .tcard:hover .pop { display: block; }
 @media (max-width: 860px) { .triage-board { grid-template-columns: 1fr; } }
+
+/* ---- zoomable gantt timeline ---- */
+.gantt-menu { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+.gbtn { border: 1px solid var(--bd-border-strong); background: var(--bd-surface); color: var(--bd-ink-2); border-radius: var(--r-btn); padding: 4px 10px; font-size: 12px; font-weight: 700; transition: background .12s, color .12s, border-color .12s; }
+.gbtn:hover { border-color: var(--bd-ink-3); }
+.gbtn.on { background: var(--bd-amber); border-color: var(--bd-amber); color: var(--bd-amber-ink); }
+.gantt-scroll { overflow-x: auto; overflow-y: hidden; border: 1px solid var(--bd-border); border-radius: var(--r-card); background: var(--bd-surface); box-shadow: var(--sh-card); }
+.gantt-inner { position: relative; }
+.gantt-axis { position: relative; height: 22px; border-bottom: 1px solid var(--bd-border); background: var(--bd-surface-alt); }
+.gtick { position: absolute; top: 5px; font-size: 10px; color: var(--bd-ink-3); white-space: nowrap; transform: translateX(-50%); }
+.gantt-today { position: absolute; top: 22px; bottom: 0; width: 2px; background: var(--bd-red); opacity: 0.6; z-index: 2; pointer-events: none; }
+.gantt-today span { position: absolute; top: -17px; left: -15px; font-size: 9px; font-weight: 700; color: var(--bd-red); background: var(--bd-surface); padding: 0 3px; border-radius: 3px; }
+.gantt-row { position: relative; border-bottom: 1px solid #F1F1F1; }
+.gantt-name { position: sticky; left: 0; z-index: 3; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; background: var(--bd-surface); border-right: 1px solid var(--bd-border); cursor: pointer; box-sizing: border-box; }
+.gantt-name:hover { background: #FBFAF6; }
+.gname { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 74px; }
+.gbadge { font-size: 9px; font-weight: 700; border-radius: 8px; padding: 1px 5px; white-space: nowrap; margin-left: auto; }
+.gbadge.behind { background: var(--bd-red-bg); color: #b23524; }
+.gbadge.ahead { background: var(--bd-green-bg); color: #1f7a54; }
+.gbadge.ontrack { background: #EEF0F2; color: var(--bd-ink-2); }
+.gblock { position: absolute; top: 8px; height: 18px; border-radius: 3px; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: left .18s ease, width .18s ease; cursor: pointer; }
+.gblock:hover { outline: 2px solid var(--bd-ink); outline-offset: -1px; z-index: 4; }
+.gblk-n { font-size: 9px; font-weight: 700; }
+.gvisit { position: absolute; top: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--bd-ink-3); transform: translateX(-50%); z-index: 1; border: 1px solid var(--bd-surface); }
+.gcaret { position: absolute; bottom: 1px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 7px solid var(--bd-ink); transform: translateX(-50%); z-index: 2; }
+.gswatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: middle; }

@@ -3,7 +3,7 @@
 // `fictive` rows (technicians, candidates, scores, assignments) are ours, per 4_Data_Layer.md.
 // This module is the initial seed; the store loads it into localStorage on first run.
 
-export const SEED_VERSION = 'v4';
+export const SEED_VERSION = 'v5';
 export const TODAY = '2026-07-01'; // the operation's "today" (matches the strategy docs)
 
 // ---------------------------------------------------------------------------
@@ -62,6 +62,11 @@ export const PHASES = [...new Set(STEPS.map((s) => s.phase))];
 
 // where each project currently sits on the 24-step spine (from recruitment status)
 const PROGRESS_BY_STATUS = { 'Pre-recruitment': 3, Onboarded: 12, Scheduled: 16, Deployed: 21 };
+// Date-consistent current step per project: near-delivery projects are further along, far-future
+// ones are still early — so the timeline's planned-vs-actual (and the Process board) read true.
+// 27th Street is deliberately behind (overdue); most far-future work sits in early sales.
+const PROGRESS_BY_ID = { '27th Street': 18, JPSM: 15, BBH: 14, 'Hub At': 7, WRH: 5, Z1: 2, RISE: 1, WAP: 1, MTX: 0, 'The WWE': 0, 'P Health': 0, 'Buck D': 0, UGA: 0 };
+const statusForProgress = (pr) => (pr >= 21 ? 'Deployed' : pr >= 13 ? 'Scheduled' : pr >= 7 ? 'Onboarded' : 'Pre-recruitment');
 // Returning-tech projects (fast path): skip Buildots Training + PPE
 const RETURNING = new Set(['RISE', 'Z1']);
 // seed change-log history for a few projects (FICTIVE) — cause taxonomy + acceleration + volatility
@@ -81,14 +86,18 @@ const CHANGE_LOGS = {
   ],
 };
 
-export const seedProjects = baseProjects.map((p) => ({
-  ...p,
-  assignmentType: RETURNING.has(p.id) ? 'Returning' : 'New-hire',
-  progress: p.junk ? 0 : (PROGRESS_BY_STATUS[p.recruitmentStatus] ?? 3),
-  stepState: {}, // manual overrides: { [stepIndex]: 'done'|'doing'|'blocked'|'skipped' }
-  changeLog: CHANGE_LOGS[p.id] || [],
-  changeCount: (CHANGE_LOGS[p.id] || []).length,
-}));
+export const seedProjects = baseProjects.map((p) => {
+  const progress = p.junk ? 0 : (PROGRESS_BY_ID[p.id] ?? PROGRESS_BY_STATUS[p.recruitmentStatus] ?? 3);
+  return {
+    ...p,
+    assignmentType: RETURNING.has(p.id) ? 'Returning' : 'New-hire',
+    progress,
+    recruitmentStatus: statusForProgress(progress), // keep the status label consistent with the step
+    stepState: {}, // manual overrides: { [stepIndex]: 'done'|'doing'|'blocked'|'skipped' }
+    changeLog: CHANGE_LOGS[p.id] || [],
+    changeCount: (CHANGE_LOGS[p.id] || []).length,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // TECHNICIANS — 7, all FICTIVE (technicians_fictive.csv). 5 active + 2 churned.

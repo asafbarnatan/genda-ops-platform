@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../data/store.jsx';
 import {
-  projectStatus, statusReason, STATUS_LABEL, techniciansNeeded, readinessBy, recruitBy, fmtDate, parseDate, daysBetween, addDays,
+  projectStatus, statusReason, STATUS_LABEL, techniciansNeeded, readinessBy, recruitBy, fmtDate, parseDate, daysBetween,
   stepStatus, effectiveStep, readinessPct, phaseOfProgress, recurringVisits, assignedNames, activeTechs,
 } from '../data/derive';
-import { STEPS, PHASES, BOUNDARY_STEP, TODAY } from '../data/seed';
+import { STEPS, PHASES, BOUNDARY_STEP } from '../data/seed';
 import { StatusPill, Icon, FilterBar } from '../components/bits.jsx';
 import { EntityModal } from '../components/Modal.jsx';
 import OperatingLogic from '../components/OperatingLogic.jsx';
+import GanttTimeline from '../components/GanttTimeline.jsx';
 
 const REGIONS = ['Texas', 'Southeast', 'West'];
 const CAUSES = ['Construction ahead', 'Construction behind', 'Client update', 'Site access', 'Internal reschedule'];
@@ -220,28 +221,6 @@ export default function Schedule() {
   const rows = projects.filter(matches);
   const sorted = [...rows].sort((a, b) => (STATUS_ORDER[projectStatus(a)] - STATUS_ORDER[projectStatus(b)]) || (parseDate(a.requestedDelivery) - parseDate(b.requestedDelivery)));
 
-  const dates = rows.flatMap((p) => [p.requestedDelivery, p.projectEnd]).filter(Boolean).map(parseDate);
-  const min = dates.length ? new Date(Math.min(...dates)) : new Date('2026-01-01');
-  const max = dates.length ? new Date(Math.max(...dates)) : new Date('2029-12-31');
-  const pct = (d) => { const t = parseDate(d); if (!t) return 0; return Math.max(0, Math.min(100, ((t - min) / (max - min)) * 100)); };
-  const monthTicks = [];
-  const yearTicks = [];
-  {
-    let dd = new Date(min.getFullYear(), min.getMonth(), 1);
-    for (let k = 0; k < 60 && dd <= max; k++) {
-      const iso = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-01`;
-      const pp = pct(iso);
-      if (pp > 0.3 && pp < 99.7) monthTicks.push({ p: pp, num: dd.getMonth() + 1 });
-      dd = new Date(dd.getFullYear(), dd.getMonth() + 1, 1);
-    }
-    for (let y = min.getFullYear(); y <= max.getFullYear(); y++) {
-      const jan = new Date(y, 0, 1).getTime();
-      if (jan > max.getTime()) continue;
-      const posMs = Math.max(min.getTime(), jan);
-      yearTicks.push({ p: pct(new Date(posMs).toISOString().slice(0, 10)), year: y, boundary: jan >= min.getTime() });
-    }
-  }
-
   const applyUpdate = (projId, patch, log) => {
     const p = projects.find((x) => x.id === projId);
     const nowTs = new Date().toISOString().slice(0, 10);
@@ -313,54 +292,19 @@ export default function Schedule() {
       {view === 'timeline' ? (
         <>
           <div className="legend-tile">
-            <span className="micro" style={{ letterSpacing: '0.05em' }}>Milestones</span>
-            <span className="lk"><b style={{ color: 'var(--bd-indigo)' }}>★</b> Ready-by (SLA)</span>
-            <span className="lk"><b>▲</b> Requested Delivery / First Installation</span>
-            <span className="lk"><b>◆</b> First Upload</span>
-            <span className="lk"><span className="dot-s grey" /> Quarterly recurring visit</span>
-            <span className="lk"><span style={{ opacity: 0.4 }}>◇</span> Previous date (ghost)</span>
-            <span className="lk"><span className="pill green" style={{ fontSize: 9, padding: '1px 6px' }}>↩</span> Returning-tech</span>
-            <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-red)', verticalAlign: 'middle' }} /> Today</span>
+            <span className="micro" style={{ letterSpacing: '0.05em' }}>Stage</span>
+            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-green)' }} /> Done</span>
+            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-amber-s)' }} /> In progress</span>
+            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-red)' }} /> Blocked</span>
+            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-ink-3)' }} /> Skipped (returning)</span>
+            <span className="lk"><span className="gswatch" style={{ background: '#EBECEE', border: '1px solid var(--bd-border)' }} /> Not started</span>
+            <span className="lk"><span className="dot-s grey" /> Quarterly visit</span>
+            <span className="lk"><span style={{ display: 'inline-block', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '6px solid var(--bd-ink)', verticalAlign: 'middle' }} /> You are here</span>
+            <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-red)', verticalAlign: 'middle' }} /> Today = where you should be</span>
             <span style={{ flexBasis: '100%', height: 0 }} />
-            <span className="micro" style={{ letterSpacing: '0.05em' }}>Status</span>
-            <span className="lk"><span className="dot-s green" /> On track</span>
-            <span className="lk"><span className="dot-s amber" /> At risk</span>
-            <span className="lk"><span className="dot-s red" /> Critical</span>
+            <span className="small muted">Each square is one of the 24 process steps at its planned date. The gap between a project's caret and the Today line is how far ahead / behind it is. Colours are live from the process — a move on the Process board or a ✓/✕ in the project drawer recolours the square here.</span>
           </div>
-          <div className="card card-pad">
-            <div className="tl-axis"><div /><div className="ticks" style={{ position: 'relative', height: 28, display: 'block' }}>
-              {yearTicks.map((t, i) => <span key={`y${i}`} style={{ position: 'absolute', left: `${t.p}%`, top: 0, fontSize: 14, fontWeight: 700, color: 'var(--bd-ink)', paddingLeft: t.boundary ? 6 : 0, borderLeft: t.boundary ? '2px solid var(--bd-border-strong)' : 'none', lineHeight: '15px' }}>{t.year}</span>)}
-              {monthTicks.map((t, i) => <span key={`m${i}`} style={{ position: 'absolute', left: `${t.p}%`, bottom: 0, transform: 'translateX(-50%)', fontSize: 8, color: 'var(--bd-ink-3)' }}>{t.num}</span>)}
-            </div></div>
-            <div className="timeline">
-              {yearTicks.filter((t) => t.boundary).map((t, i) => (
-                <div key={`yd${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: `calc(${t.p}% + ${(160 * (1 - t.p / 100)).toFixed(1)}px)`, width: 1, background: 'var(--bd-border)', zIndex: 1, pointerEvents: 'none' }} />
-              ))}
-              <div style={{ position: 'absolute', top: 0, bottom: 0, left: `calc(${pct(TODAY)}% + ${(160 * (1 - pct(TODAY) / 100)).toFixed(1)}px)`, width: 2, background: 'var(--bd-red)', opacity: 0.6, zIndex: 5, pointerEvents: 'none' }}>
-                <span style={{ position: 'absolute', bottom: -14, left: -14, fontSize: 9, fontWeight: 700, color: 'var(--bd-red)', background: 'var(--bd-surface)', padding: '0 3px', borderRadius: 3 }}>Today</span>
-              </div>
-              {sorted.map((p) => {
-                const st = projectStatus(p);
-                const left = pct(p.requestedDelivery), right = pct(p.projectEnd || p.requestedDelivery);
-                const dotCls = st === 'ontrack' ? 'green' : st === 'atrisk' ? 'amber' : st === 'critical' ? 'red' : 'grey';
-                const lastDated = [...(p.changeLog || [])].reverse().find((c) => c.delta);
-                return (
-                  <div className="tl-row" key={p.id}>
-                    <div className="tl-name rowlink" onClick={() => setDrawer(p.id)}><span className={`dot-s ${dotCls}`} />{p.name} {p.assignmentType === 'Returning' && <span className="pill green" style={{ fontSize: 9 }}>↩</span>}</div>
-                    <div className="tl-track rowlink" onClick={() => setDrawer(p.id)}>
-                      <div className={`tl-bar ${st}`} style={{ left: `${left}%`, width: `${Math.max(2, right - left)}%` }} />
-                      <div className="tl-marker" style={{ left: `${pct(readinessBy(p))}%`, color: 'var(--bd-indigo)' }}>★</div>
-                      <div className="tl-marker" style={{ left: `${left}%` }}>▲</div>
-                      <div className="tl-marker" style={{ left: `${pct(addDays(p.requestedDelivery, 4))}%`, top: 1, fontSize: 8 }}>◆</div>
-                      {recurringVisits(p).map((rv, i) => <div key={i} className="dot-s grey" style={{ position: 'absolute', top: 9, left: `${pct(rv)}%`, width: 5, height: 5 }} title={`recurring visit ${fmtDate(rv)}`} />)}
-                      {(p.extraVisits || []).map((rv, i) => <div key={`x${i}`} className="dot-s amber" style={{ position: 'absolute', top: 9, left: `${pct(rv)}%`, width: 6, height: 6 }} title={`ad-hoc visit ${fmtDate(rv)}`} />)}
-                      {lastDated && <div className="tl-marker" style={{ left: `${pct(lastDated.old)}%`, top: 9, opacity: 0.4 }} title={`previous date ${fmtDate(lastDated.old)}`}>◇</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <GanttTimeline projects={sorted} onOpen={(id) => setDrawer(id)} />
         </>
       ) : (
         <div className="card table-scroll">
