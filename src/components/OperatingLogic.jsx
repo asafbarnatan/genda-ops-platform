@@ -37,34 +37,36 @@ const CONTENT = {
   },
   schedule: {
     part: 'Part 2', title: 'Project Schedule — operating logic',
-    q: 'A portfolio scheduling view: the fields you need, how you read each project against one template, flag date changes, show cause, and surface risk at a glance.',
+    q: 'Read every project against one template; flag date changes with cause; surface risk at a glance.',
     groups: [
       { h: 'The principle', items: [
-        'Manage change, not a static plan: every slip is made visible, attributed to a cause, and auto-converted into risk (it re-runs the Readiness SLA clock).',
-        'Timeline primary + a linked table; at-risk projects float to the top.',
+        'Manage change, not a static plan: each slip is made visible, given a cause, and re-runs the Readiness SLA clock. At-risk floats to the top.',
       ] },
-      { h: 'Reading the timeline — one template, three fixed milestones', table: {
-        cols: ['Marker', 'When', 'What it means'],
+      { h: 'Reading the timeline — one template, 3 fixed milestones', table: {
+        cols: ['Marker', 'When', 'Means'],
         rows: [
-          ['Step 1 · recruit-by', 'delivery − 6 weeks', 'the clock starts — begin recruiting or reserve a pool tech'],
-          ['Ready-by (amber)', 'delivery − 10 business days', 'office prep done, technician ready — the Readiness SLA buffer'],
-          ['First Installation ◆', 'Requested delivery', 'the client promise; every square is scaled to land here'],
+          ['Step 1 · recruit-by', 'delivery − 6 wks', 'start recruiting'],
+          ['Ready-by (amber)', 'delivery − 10 biz days', 'prep done, tech ready (SLA)'],
+          ['First Install ◆', 'Requested delivery', 'the client promise'],
         ],
-      }, note: 'The same 24-step template sits on every row, so positions compare directly. Colour is live from the process — a move on the Process board or a ✓/✕ in the project drawer recolours the square here (one source of truth). A square turns red once it is past its planned date and still open: that gap is exactly how far behind the project is versus Today.' },
-      { h: 'Fields — glanceable first, full detail on click', table: {
-        cols: ['View', 'Shows', 'Good for'],
+      }, note: 'Colour is live — set a stage status anywhere (drawer, square, Process board) and it updates here. Red = past its planned date and still open.' },
+      { h: 'Views + owners', table: {
+        cols: ['Layer', 'Holds'],
         rows: [
-          ['Timeline', '~6 key signals per row', 'reading status at a glance'],
-          ['Table', 'curated, sortable columns', 'comparing and sorting'],
-          ['Drawer (click a project)', 'all 17 provided fields + derived', 'the full record'],
+          ['Timeline', '~6 signals / row · status at a glance'],
+          ['Table', 'sortable columns · compare'],
+          ['Drawer', 'all 17 fields + derived · full record'],
+          ['Opportunity Owner', 'Salesforce sales rep — not a step or tech'],
+          ['Regional Lead · Tech', 'on-site quality · runs the install'],
         ],
-      }, note: 'Depth without clutter: the main view stays readable and the full dataset is one click away. Owners are people, not steps — the Opportunity Owner is the Salesforce sales rep who owns the client, the Regional Lead owns on-site quality, and the technician runs the install.' },
-      { h: 'Date changes — two sharp signals', items: [
-        'Acceleration-as-risk: a date pulled earlier compresses the runway and can breach lead time in one move — flagged critical, not "good news."',
-        'Volatility: a date moved ≥3 times is unstable regardless of where it sits now.',
-        'Cause drives the response: construction ahead / behind · client update · site access · internal reschedule.',
-        'Auto-propagation + acknowledge loop: technician + RL confirm; a decline auto-triggers reassignment.',
-      ] },
+      } },
+      { h: 'Date changes — two signals', table: {
+        cols: ['Signal', 'Rule', 'Response'],
+        rows: [
+          ['Acceleration', 'date pulled earlier', 'critical — runway compressed'],
+          ['Volatility', 'moved ≥3 times', 'unstable wherever it sits'],
+        ],
+      }, note: 'Cause tags the slip (construction · client · site access · internal); tech + RL acknowledge, a decline auto-reassigns.' },
     ],
   },
   quality: {

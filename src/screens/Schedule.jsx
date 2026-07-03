@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '../data/store.jsx';
 import {
   projectStatus, statusReason, STATUS_LABEL, techniciansNeeded, readinessBy, recruitBy, fmtDate, parseDate, daysBetween,
-  stepStatus, effectiveStep, readinessPct, phaseOfProgress, recurringVisits, assignedNames, activeTechs,
+  stepStatus, stepDisplayStatus, STEP_STATUSES, effectiveStep, readinessPct, phaseOfProgress, recurringVisits, assignedNames, activeTechs,
 } from '../data/derive';
 import { STEPS, PHASES, BOUNDARY_STEP } from '../data/seed';
 import { StatusPill, Icon, FilterBar } from '../components/bits.jsx';
@@ -15,14 +15,14 @@ const CAUSES = ['Construction ahead', 'Construction behind', 'Client update', 'S
 const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud Factory'];
 const TYPES = ['Residential', 'Healthcare', 'Commercial', 'Education'];
 const STATUS_ORDER = { critical: 0, atrisk: 1, ontrack: 2, na: 3 };
-const GLYPH = { done: '✓', doing: '◐', blocked: '✕', todo: '○', skipped: '⊘' };
+const GLYPH = { done: '✓', doing: '◐', behind: '!', todo: '○', skipped: '⊘' };
 
 // inline-editable table cells
 const Sel = ({ value, options, onChange, wide }) => <select className={`cell-edit ${wide ? 'wide' : ''}`} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>;
 const Num = ({ value, onChange }) => <input className="cell-edit num-edit" type="number" value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />;
 const DateC = ({ value, onChange }) => <input className="cell-edit" type="date" value={value || ''} onChange={(e) => onChange(e.target.value)} />;
 
-function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, onUpdate }) {
+function ProcessDrawer({ project, technicians, onClose, onEdit, onSetStep, onUpdate }) {
   const [tab, setTab] = useState('process');
   const [openPhases, setOpenPhases] = useState([phaseOfProgress(project)]);
   const [dField, setDField] = useState('Requested Delivery');
@@ -63,7 +63,7 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
         {tab === 'process' && (
           <div>
             <div style={{ padding: '10px 24px 0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="small muted">Open any number of phases at once — parallel work is normal. Click a step to mark it done / blocked; it writes to History and recomputes readiness.</span>
+              <span className="small muted">Open any number of phases at once — parallel work is normal. Set any stage's status from its dropdown (or ↺ Auto to follow the flow); it writes to History, recomputes readiness, recolours the timeline, and moves the project on the Process board.</span>
               {savedMsg && <span className="pill green">{savedMsg}</span>}
               <span className="spacer" />
               <button className="btn-text btn-sm" onClick={() => setOpenPhases(PHASES)}>Expand all</button>
@@ -86,13 +86,20 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onToggleStep, on
                     {expanded && (
                       <div className="phase-steps">
                         {steps.map((s) => {
-                          const st = stepStatus(project, s.i);
+                          const ds = stepDisplayStatus(project, s.i);
+                          const overridden = project.stepState?.[s.i] != null;
                           return (
-                            <div className="step" key={s.i} style={{ cursor: 'pointer' }} onClick={() => { onToggleStep(s.i, st); flash(st === 'done' ? '✓ Step marked blocked' : st === 'blocked' ? '✓ Step reset' : '✓ Step marked done'); }} title="click to toggle done / blocked">
-                              <span className={`glyph ${st}`} style={{ width: 18, height: 18, fontSize: 11 }}>{GLYPH[st]}</span>
+                            <div className="step" key={s.i}>
+                              <span className={`glyph ${ds}`} style={{ width: 18, height: 18, fontSize: 11 }}>{GLYPH[ds]}</span>
                               <span className="small muted mono-num" style={{ minWidth: 18 }}>{s.i + 1}.</span>
-                              <span style={{ textDecoration: st === 'skipped' ? 'line-through' : 'none' }}>{s.name}</span>
-                              {st === 'skipped' && <span className="small muted"> — returning tech</span>}
+                              <span style={{ textDecoration: ds === 'skipped' ? 'line-through' : 'none' }}>{s.name}</span>
+                              <span className="spacer" />
+                              <select className={`step-status-select ${ds}`} value={ds === 'behind' ? 'blocked' : ds}
+                                onChange={(e) => { onSetStep(s.i, e.target.value); flash(`✓ ${STEPS[s.i].name} → ${e.target.value === 'auto' ? 'auto' : STEP_STATUSES.find((o) => o.v === e.target.value)?.label}`); }}
+                                title="Set this stage's status — it recolours the timeline and moves the project on the Process board">
+                                {STEP_STATUSES.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+                                {overridden && <option value="auto">↺ Auto</option>}
+                              </select>
                             </div>
                           );
                         })}
@@ -229,12 +236,16 @@ export default function Schedule() {
     const bumpVol = log && String(log.field).startsWith('Requested');
     update('projects', projId, { ...patch, changeLog, changeCount: (p.changeCount || 0) + (bumpVol ? 1 : 0) });
   };
-  const toggleStep = (projId, i, current) => {
+  // Set any stage's status directly (from the drawer dropdown or a Gantt square). 'auto'
+  // clears the override so the stage follows the normal flow again. One writer, so the
+  // change lands the same way in the timeline, the drawer, the table, and the Process board.
+  const setStep = (projId, i, val) => {
     const p = projects.find((x) => x.id === projId);
-    const next = current === 'done' ? 'blocked' : current === 'blocked' ? undefined : 'done';
+    const cur = stepDisplayStatus(p, i);
     const stepState = { ...(p.stepState || {}) };
-    if (next === undefined) delete stepState[i]; else stepState[i] = next;
-    applyUpdate(projId, { stepState }, { field: `Step: ${STEPS[i].name}`, old: current, new: next || 'default', cause: 'Manual update', note: `Marked ${next || 'reset'}` });
+    if (val === 'auto') delete stepState[i]; else stepState[i] = val;
+    const label = val === 'auto' ? 'auto' : (STEP_STATUSES.find((o) => o.v === val)?.label || val);
+    applyUpdate(projId, { stepState }, { field: `Step ${i + 1}: ${STEPS[i].name}`, old: cur, new: label, cause: 'Status set', note: `Set to ${label}` });
   };
   const editCell = (p, key, value, label) => {
     const isDate = key === 'requestedDelivery' || key === 'projectEnd';
@@ -312,7 +323,7 @@ export default function Schedule() {
               <span className="small muted">Hover a square for its definition and date · the reading guide lives in Operating logic</span>
             </div>
           </div>
-          <GanttTimeline projects={sorted} onOpen={(id) => setDrawer(id)} onOpenStageGuide={() => setStageGuide(true)} />
+          <GanttTimeline projects={sorted} onOpen={(id) => setDrawer(id)} onOpenStageGuide={() => setStageGuide(true)} onSetStep={setStep} />
           {stageGuide && (
             <Modal title="Stage guide — the 24 process steps" onClose={() => setStageGuide(false)} footer={<button className="btn-text" onClick={() => setStageGuide(false)}>Close</button>}>
               <div className="small muted" style={{ marginBottom: 12 }}>Every square on the timeline is one of these steps, grouped into the 7 phases. Returning-tech projects skip Buildots Training + PPE (the fast path).</div>
@@ -372,7 +383,7 @@ export default function Schedule() {
         </div>
       )}
 
-      {drawerProject && <ProcessDrawer project={drawerProject} technicians={technicians} onClose={() => setDrawer(null)} onEdit={() => { setModal({ ...drawerProject, startStep: stepOptions[effectiveStep(drawerProject)] }); setDrawer(null); }} onToggleStep={(i, cur) => toggleStep(drawerProject.id, i, cur)} onUpdate={(patch, log) => applyUpdate(drawerProject.id, patch, log)} />}
+      {drawerProject && <ProcessDrawer project={drawerProject} technicians={technicians} onClose={() => setDrawer(null)} onEdit={() => { setModal({ ...drawerProject, startStep: stepOptions[effectiveStep(drawerProject)] }); setDrawer(null); }} onSetStep={(i, val) => setStep(drawerProject.id, i, val)} onUpdate={(patch, log) => applyUpdate(drawerProject.id, patch, log)} />}
       {modal && <EntityModal title={modal.id && projects.some((p) => p.id === modal.id) ? `Edit ${modal.name}` : 'Add project'} fields={projFields} initial={modal} onSave={saveProj} onClose={() => setModal(null)} onDelete={modal.id && projects.some((p) => p.id === modal.id) ? () => remove('projects', modal.id) : undefined} />}
     </div>
   );

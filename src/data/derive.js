@@ -219,6 +219,30 @@ export function stepStatus(project, i) {
   if (i === prog) return 'doing';
   return 'todo';
 }
+// The 5 statuses the OM can set on any stage (the legend vocabulary). 'blocked' is stored
+// internally and shown as "Behind" so the value stays stable across the code.
+export const STEP_STATUSES = [
+  { v: 'done', label: 'Done', color: 'var(--bd-green)' },
+  { v: 'doing', label: 'In progress', color: 'var(--bd-amber-s)' },
+  { v: 'blocked', label: 'Behind', color: 'var(--bd-red)' },
+  { v: 'skipped', label: 'Skipped', color: 'var(--bd-ink-3)' },
+  { v: 'todo', label: 'Upcoming', color: '#EBECEE' },
+];
+// The single VISUAL status used everywhere (Gantt squares, drawer stepper, legend): it maps
+// the logical stepStatus to the 5-way display, and auto-flags a still-open step whose planned
+// date has passed as "behind" — UNLESS the OM has explicitly overridden it. One source of
+// truth, so a change made in the drawer, on the Process board, or on the Gantt shows in all.
+export function stepDisplayStatus(project, i, opts = {}) {
+  const today = opts.today || TODAY;
+  const s = stepStatus(project, i);        // done | doing | blocked | skipped | todo
+  if (s === 'blocked') return 'behind';
+  if (s === 'todo' && project.stepState?.[i] == null && buildStarted(project, today) && i < 21) {
+    const planned = (opts.planned || plannedStepDates(project))[i];
+    if (planned && planned < today) return 'behind'; // overdue and still open
+  }
+  return s;
+}
+
 // A project sits at the EARLIEST step that is not yet done/skipped — so a step
 // blocked with an ✕ pulls the project back to that step, even if later steps advanced.
 export function effectiveStep(project) {

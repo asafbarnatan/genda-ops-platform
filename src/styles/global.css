@@ -150,7 +150,15 @@ select.input { cursor: pointer; }
 .glyph.doing { background: var(--bd-amber-bg); color: #a5641b; }
 .glyph.blocked { background: var(--bd-red-bg); color: #b23524; }
 .glyph.todo { background: #EEF0F2; color: var(--bd-ink-3); }
-.glyph.skip { background: #EDEBF7; color: #6a5acd; }
+.glyph.behind { background: var(--bd-red-bg); color: #b23524; }
+.glyph.skip, .glyph.skipped { background: #EDEBF7; color: #6a5acd; }
+/* per-stage status dropdown in the drawer stepper */
+.step-status-select { font-size: 11px; font-weight: 600; padding: 2px 4px; border: 1px solid var(--bd-border); border-radius: 6px; background: var(--bd-surface); color: var(--bd-ink-2); max-width: 112px; cursor: pointer; }
+.step-status-select.done { color: #1f7a54; }
+.step-status-select.doing { color: #a5641b; }
+.step-status-select.behind { color: #b23524; }
+.step-status-select.skipped { color: #6a5acd; }
+.step-status-select.todo { color: var(--bd-ink-3); }
 .boundary { display: flex; align-items: center; gap: 8px; padding: 8px var(--s5); margin: 4px 0; background: var(--bd-surface-alt); border-top: 1px dashed var(--bd-border-strong); border-bottom: 1px dashed var(--bd-border-strong); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--bd-ink-2); }
 
 /* ============ alerts ============ */
@@ -426,6 +434,18 @@ select.cell-edit { -webkit-appearance: none; appearance: none; padding-right: 22
 .gtip-info { font-size: 11.5px; line-height: 1.45; opacity: 0.88; margin-top: 3px; }
 .gtip-meta { font-size: 10.5px; margin-top: 6px; color: var(--bd-amber); font-weight: 600; }
 .gantt-stageguide { margin-left: 12px; }
+/* click-a-square status editor popover */
+.gblock.editable { cursor: pointer; }
+.gblock.editing { outline: 2px solid var(--bd-ink); outline-offset: -1px; z-index: 6; }
+.gedit-overlay { position: fixed; inset: 0; z-index: 210; }
+.gedit { position: fixed; z-index: 220; transform: translateX(-50%); background: var(--bd-surface); border: 1px solid var(--bd-border-strong); border-radius: 10px; box-shadow: var(--sh-modal); padding: 6px; min-width: 172px; }
+.gedit-h { font-size: 11px; font-weight: 700; color: var(--bd-ink-2); padding: 3px 8px 6px; border-bottom: 1px solid var(--bd-border); margin-bottom: 4px; }
+.gedit-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--bd-ink); padding: 6px 8px; border-radius: 6px; background: transparent; }
+.gedit-opt:hover { background: var(--bd-surface-alt); }
+.gedit-opt.on { background: var(--bd-amber-bg); }
+.gedit-opt.reset { border-top: 1px solid var(--bd-border); margin-top: 4px; padding-top: 7px; font-weight: 500; color: var(--bd-ink-2); font-size: 11.5px; }
+.gedit-opt.reset:disabled { opacity: 0.4; cursor: not-allowed; }
+.gedit-sw { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .gswatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: middle; }
 /* stage guide modal */
 .stage-guide-phase { margin-bottom: 14px; }
