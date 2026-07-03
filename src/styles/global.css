@@ -81,7 +81,7 @@ button { font-family: inherit; cursor: pointer; }
 .pill.provided { background: var(--bd-provided-bg); color: var(--bd-provided); }
 .pill.fictive { background: var(--bd-fictive-bg); color: var(--bd-fictive); }
 .dot-s { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.dot-s.green { background: var(--bd-green); } .dot-s.amber { background: var(--bd-amber-s); } .dot-s.red { background: var(--bd-red); } .dot-s.grey { background: var(--bd-ink-3); }
+.dot-s.green { background: var(--bd-green); } .dot-s.amber { background: var(--bd-amber-s); } .dot-s.red { background: var(--bd-red); } .dot-s.grey { background: var(--bd-ink-3); } .dot-s.indigo { background: #5B4FE9; }
 
 /* ============ provenance legend ============ */
 .legend { display: flex; align-items: center; gap: var(--s3); font-size: 11px; color: var(--bd-ink-2); }
@@ -404,13 +404,19 @@ select.cell-edit { -webkit-appearance: none; appearance: none; padding-right: 22
 .gantt-scroll { overflow-x: auto; overflow-y: hidden; border: 1px solid var(--bd-border); border-radius: var(--r-card); background: var(--bd-surface); box-shadow: var(--sh-card); }
 .gantt-inner { position: relative; }
 .gantt-axis { position: relative; height: 22px; border-bottom: 1px solid var(--bd-border); background: var(--bd-surface-alt); }
+.gantt-axis-head { position: sticky; z-index: 4; height: 22px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box; background: var(--bd-surface-alt); font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--bd-ink-3); }
+.gah-name { left: 0; }
+.gah-status { border-left: 1px solid var(--bd-border); }
 .gtick { position: absolute; top: 5px; font-size: 10px; color: var(--bd-ink-3); white-space: nowrap; transform: translateX(-50%); }
 .gantt-today { position: absolute; top: 22px; bottom: 0; width: 2px; background: var(--bd-ink-2); opacity: 0.55; z-index: 2; pointer-events: none; }
 .gantt-today span { position: absolute; top: -17px; left: -15px; font-size: 9px; font-weight: 700; color: var(--bd-ink-2); background: var(--bd-surface); padding: 0 3px; border-radius: 3px; }
 .gantt-row { position: relative; border-bottom: 1px solid #F1F1F1; }
-.gantt-name { position: sticky; left: 0; z-index: 3; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; background: var(--bd-surface); border-right: 1px solid var(--bd-border); cursor: pointer; box-sizing: border-box; }
+.gantt-name { position: sticky; left: 0; z-index: 3; height: 100%; display: flex; align-items: center; padding: 0 8px 0 10px; background: var(--bd-surface); cursor: pointer; box-sizing: border-box; }
 .gantt-name:hover { background: #FBFAF6; }
-.gname { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 76px; }
+.gantt-status { position: sticky; z-index: 3; height: 100%; display: flex; align-items: center; padding: 0 6px; background: var(--bd-surface); border-right: 1px solid var(--bd-border); border-left: 1px solid #F1F1F1; box-sizing: border-box; cursor: pointer; }
+.gantt-status:hover { background: #FBFAF6; }
+.gantt-status .pill { font-size: 10px; padding: 2px 7px; gap: 4px; }
+.gname { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
 .gbadge { font-size: 9px; font-weight: 700; border-radius: 8px; padding: 1px 5px; white-space: nowrap; margin-left: auto; }
 .gbadge.behind { background: var(--bd-red-bg); color: #b23524; }
 .gbadge.ahead { background: var(--bd-green-bg); color: #1f7a54; }

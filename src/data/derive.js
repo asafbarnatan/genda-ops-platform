@@ -66,9 +66,9 @@ export function projectStatus(p, today = TODAY) {
   if (d < 0) return 'critical';                 // past Requested Delivery
   if (d <= 14) return ready ? 'atrisk' : 'critical'; // inside readiness buffer
   if (d <= 42) return (p.assignedTechs?.length === 0) ? 'atrisk' : 'ontrack'; // inside recruit window
-  return 'ontrack';
+  return 'planning'; // recruit window (delivery − 6 wks) has not opened → future pipeline
 }
-export const STATUS_LABEL = { ontrack: 'On track', atrisk: 'At risk', critical: 'Critical', na: '—' };
+export const STATUS_LABEL = { ontrack: 'On track', atrisk: 'At risk', critical: 'Critical', planning: 'Planning', na: '—' };
 
 // plain-language reason for the status — so "why Critical?" is answerable on the platform
 export function statusReason(p, today = TODAY) {
@@ -85,6 +85,7 @@ export function statusReason(p, today = TODAY) {
   if (d <= 14 && !ready) return `Readiness gap: delivery is in ${d} days — inside the 10-day Readiness SLA buffer — and there is no Ready technician yet.${accelNote}`;
   if (d <= 14 && ready) return `Delivery is in ${d} days — inside the 10-day Readiness SLA buffer. It is staffed, so confirm the technician and site access and monitor.${accelNote}`;
   if (d <= 42 && (p.assignedTechs?.length === 0)) return `Inside the ~6-week recruit window with no technician assigned yet.${accelNote}`;
+  if (d > 42) return `In planning: delivery is ${d} days out, so the ~6-week recruit window has not opened yet — future pipeline, not yet in delivery risk.${accelNote}`;
   return `On track: delivery is ${d} days out, a technician is assigned, and readiness is on pace with buffer to spare.${accelNote}`;
 }
 

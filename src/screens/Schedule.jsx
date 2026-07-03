@@ -14,7 +14,7 @@ const REGIONS = ['Texas', 'Southeast', 'West'];
 const CAUSES = ['Construction ahead', 'Construction behind', 'Client update', 'Site access', 'Internal reschedule'];
 const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud Factory'];
 const TYPES = ['Residential', 'Healthcare', 'Commercial', 'Education'];
-const STATUS_ORDER = { critical: 0, atrisk: 1, ontrack: 2, na: 3 };
+const STATUS_ORDER = { critical: 0, atrisk: 1, ontrack: 2, planning: 3, na: 4 };
 const GLYPH = { done: '✓', doing: '◐', behind: '!', todo: '○', skipped: '⊘' };
 
 // inline-editable table cells
@@ -52,7 +52,7 @@ function ProcessDrawer({ project, technicians, onClose, onEdit, onSetStep, onUpd
             <div className="micro">Project · {project.assignmentType}</div>
             <h3 style={{ fontSize: 18, margin: '2px 0 6px' }}>{project.name} <StatusPill status={projectStatus(project)} /></h3>
             <div className="small muted">Readiness {readinessPct(project)}% · phase: {phaseOfProgress(project)} · {names.length ? names.join(', ') : 'no tech assigned'}</div>
-            <div className="small" style={{ marginTop: 8, padding: '7px 10px', borderRadius: 6, background: sc === 'critical' ? 'var(--bd-red-bg)' : sc === 'atrisk' ? 'var(--bd-amber-bg)' : 'var(--bd-green-bg)', color: sc === 'critical' ? '#b23524' : sc === 'atrisk' ? '#a5641b' : '#1f7a54' }}><b>Why {STATUS_LABEL[sc]}:</b> {statusReason(project)}</div>
+            <div className="small" style={{ marginTop: 8, padding: '7px 10px', borderRadius: 6, background: sc === 'critical' ? 'var(--bd-red-bg)' : sc === 'atrisk' ? 'var(--bd-amber-bg)' : sc === 'planning' ? '#ECEAFB' : 'var(--bd-green-bg)', color: sc === 'critical' ? '#b23524' : sc === 'atrisk' ? '#a5641b' : sc === 'planning' ? '#4034b0' : '#1f7a54' }}><b>Why {STATUS_LABEL[sc]}:</b> {statusReason(project)}</div>
           </div>
           <button className="x" onClick={onClose}>×</button>
         </div>

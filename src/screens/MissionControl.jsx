@@ -69,11 +69,13 @@ export default function MissionControl() {
   const flaggedTechs = technicians.filter((t) => t.pool !== 'Active');
   const bnProjects = (projectsByPhase(projects)[m.topBottleneck]) || [];
   const gapProjects = aps.map((p) => ({ p, miss: Math.max(0, techniciansNeeded(p) - (p.assignedTechs?.length || 0)) })).filter((x) => x.miss > 0 && !x.p.staffingOk);
-  // Portfolio-health RAG buckets — mutually exclusive, mirror the Schedule status legend.
+  // Portfolio-health buckets — straight from the one 4-value projectStatus (Critical / At risk /
+  // On track / Planning), the same status shown in the table, the drawer, and the Gantt column.
   const onTrackCount = aps.filter((p) => projectStatus(p) === 'ontrack').length;
   const atRiskOnly = aps.filter((p) => projectStatus(p) === 'atrisk').length;
   const criticalCount = aps.filter((p) => projectStatus(p) === 'critical').length;
-  const naCount = aps.length - onTrackCount - atRiskOnly - criticalCount;
+  const planningCount = aps.filter((p) => projectStatus(p) === 'planning').length;
+  const naCount = aps.length - onTrackCount - atRiskOnly - criticalCount - planningCount;
   const returningProjects = aps.filter((p) => p.assignmentType === 'Returning');
   const goDetail = (screen, focus = null) => { navigate(screen, focus); setDetail(null); };
 
@@ -139,7 +141,7 @@ export default function MissionControl() {
     projectsAll: {
       title: 'Active projects', value: m.projects, link: { screen: 'schedule', label: 'Open the Schedule' },
       formula: `All Genda Pro installs in the active portfolio = ${aps.length}.`,
-      items: aps.map((p) => ({ name: p.name, note: `${p.region} · ${projectStatus(p) === 'critical' ? 'critical' : projectStatus(p) === 'atrisk' ? 'at risk' : 'on track'}`, bad: projectStatus(p) === 'critical', warn: projectStatus(p) === 'atrisk', focus: p.id })),
+      items: aps.map((p) => ({ name: p.name, note: `${p.region} · ${projectStatus(p) === 'critical' ? 'critical' : projectStatus(p) === 'atrisk' ? 'at risk' : projectStatus(p) === 'planning' ? 'planning' : 'on track'}`, bad: projectStatus(p) === 'critical', warn: projectStatus(p) === 'atrisk', focus: p.id })),
     },
     techniciansAll: {
       title: 'Technicians', value: m.technicians, link: { screen: 'quality', label: 'Open Quality' },
@@ -245,9 +247,10 @@ export default function MissionControl() {
                 <div className="kv"><span className="dot-s green" /> On track &nbsp;<b className="mono-num">{onTrackCount}</b></div>
                 <div className="kv"><span className="dot-s amber" /> At risk &nbsp;<b className="mono-num">{atRiskOnly}</b></div>
                 <div className="kv"><span className="dot-s red" /> Critical (dropped / overdue) &nbsp;<b className="mono-num">{criticalCount}</b></div>
+                <div className="kv"><span className="dot-s" style={{ background: '#5B4FE9' }} /> Planning (build not started) &nbsp;<b className="mono-num">{planningCount}</b></div>
                 {naCount > 0 && <div className="kv"><span className="dot-s grey" /> Not assessable &nbsp;<b className="mono-num">{naCount}</b></div>}
                 <hr className="sep" style={{ margin: '6px 0' }} />
-                <div className="small muted">Same three statuses as the Schedule tab. On track + At risk + Critical{naCount > 0 ? ' + N/A' : ''} = {m.projects} active projects.</div>
+                <div className="small muted">The one project status, same in the table, drawer, and Gantt column. In-flight = On track / At risk / Critical; Planning = build window (delivery − 6 wks) not open yet. Total {m.projects}.</div>
               </div>
             </div>
           </div>

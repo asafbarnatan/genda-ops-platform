@@ -1,7 +1,7 @@
 // Small shared UI atoms.
 import { STATUS_LABEL } from '../data/derive';
 
-const STATUS_CLASS = { ontrack: 'green', atrisk: 'amber', critical: 'red', na: 'grey' };
+const STATUS_CLASS = { ontrack: 'green', atrisk: 'amber', critical: 'red', planning: 'indigo', na: 'grey' };
 
 export function StatusPill({ status }) {
   return <span className={`pill ${STATUS_CLASS[status] || 'grey'}`}><span className={`dot-s ${STATUS_CLASS[status] || 'grey'}`} />{STATUS_LABEL[status] || status}</span>;
