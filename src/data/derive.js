@@ -272,18 +272,19 @@ export function assignedNames(project, technicians) {
 // 23=project end, linearly interpolated between.
 export function plannedStepDates(p) {
   const rd = p.requestedDelivery;
-  // Back-schedule the 24 steps across the project's real milestones so First Installation
-  // (step 16) lands exactly on the Requested Delivery date and the row runs to project end:
-  //   0-6  Pre-Signature + Signature (sales) — a ~2-month sales window BEFORE recruit-by
-  //   7-13 prep (Training / Equipment / readiness) — recruit-by → ready-by
-  //   14-16 first installation — ready-by → delivery (step 16 = delivery)
-  //   17-20 upload + review — the ~3 weeks after delivery
+  // Back-schedule the 24 steps so the two SLA milestones land EXACTLY the same way for every
+  // project — that is what lets a director read an identical template and trust the dates:
+  //   0    Installation Opportunity Created = recruit-by (delivery − 6 weeks)
+  //   0-13 sales + office prep — recruit-by → ready-by (each step the same width, ~2 days)
+  //   13   prep/office complete = ready-by (delivery − 10 business days ≈ 14 cal days)
+  //   13-16 on-site: site orientation, 0th install, first install — ready-by → delivery
+  //   16   First Installation = Requested delivery
+  //   17-20 upload + review — the ~1 month after delivery
   //   21-23 ongoing delivery + billing — through project end (with quarterly visits)
-  // step 20 (last first-installation review) closes ~1 month after delivery, step 21 (start of
-  // ongoing delivery) ~2 weeks after that — this keeps the discrete build steps NARROW; only the
-  // ongoing tail (21→23) fans out across the long operational period to project end.
+  // Pinning recruit-by + ready-by (rather than forcing all 16 equal) keeps the Readiness SLA
+  // honest; the on-site steps are legitimately wider than the quick admin steps.
   const anchors = [
-    [0, addDays(recruitBy(p), -60)], [6, recruitBy(p)], [13, readinessBy(p)],
+    [0, recruitBy(p)], [13, readinessBy(p)],
     [16, rd], [20, addDays(rd, 30)], [21, addDays(rd, 45)], [23, p.projectEnd || addDays(rd, 120)],
   ].filter(([, d]) => d);
   if (anchors.length < 2) return STEPS.map(() => rd || null);

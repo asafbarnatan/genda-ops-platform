@@ -414,6 +414,15 @@ select.cell-edit { -webkit-appearance: none; appearance: none; padding-right: 22
 .grd { position: absolute; top: 5px; bottom: 5px; width: 0; border-left: 2px dashed #5B4FE9; transform: translateX(-1px); z-index: 2; pointer-events: none; }
 .grd::before { content: '◆'; position: absolute; top: -6px; left: -5px; font-size: 10px; line-height: 1; color: #5B4FE9; }
 .grd-legend { display: inline-block; width: 8px; height: 8px; background: #5B4FE9; transform: rotate(45deg); vertical-align: middle; }
+/* Ready-by marker: the Readiness SLA (prep done ~10 business days before delivery) */
+.grd-ready { position: absolute; top: 6px; bottom: 6px; width: 0; border-left: 2px dashed var(--bd-amber-s); transform: translateX(-1px); z-index: 2; pointer-events: none; }
+.grd-ready-legend { display: inline-block; width: 0; height: 12px; border-left: 2px dashed var(--bd-amber-s); vertical-align: middle; }
+/* black hover tooltip for a stage block — matches the platform's .step-tip / .pop windows */
+.gtip { position: fixed; z-index: 200; transform: translate(-50%, calc(-100% - 8px)); max-width: 260px; background: var(--bd-ink); color: #fff; border-radius: 8px; padding: 9px 12px; box-shadow: var(--sh-modal); pointer-events: none; }
+.gtip-h { font-size: 12px; font-weight: 700; }
+.gtip-info { font-size: 11.5px; line-height: 1.45; opacity: 0.88; margin-top: 3px; }
+.gtip-meta { font-size: 10.5px; margin-top: 6px; color: var(--bd-amber); font-weight: 600; }
+.gantt-stageguide { margin-left: 12px; }
 .gswatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: middle; }
 /* stage guide modal */
 .stage-guide-phase { margin-bottom: 14px; }

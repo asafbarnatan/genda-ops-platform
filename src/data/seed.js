@@ -36,7 +36,7 @@ export const STEPS = [
   { i: 1, phase: 'Pre-Signature', name: 'Installation Opportunity Tracker', office: true, info: 'Tracking all pre-launch activities, owners, milestones, and readiness status.' },
   { i: 2, phase: 'Pre-Signature', name: 'Service Source', office: true, info: 'Determining the delivery model and identifying the appropriate service source.' },
   { i: 3, phase: 'Signature', name: 'Sales HO (Handoff)', office: true, info: 'Conducting the internal sales handoff to transfer project knowledge into operations.' },
-  { i: 4, phase: 'Signature', name: 'Contract', office: true, info: 'Finalizing the contract with the installer.' },
+  { i: 4, phase: 'Signature', name: 'Contract', office: true, info: 'Finalizing the contract with the installer — the field technician / vendor engaged to run the installation.' },
   { i: 5, phase: 'Signature', name: 'Project Slide Deck', office: true, info: 'Preparing the project overview and operational briefing materials.' },
   { i: 6, phase: 'Signature', name: 'Project Installation Plan', office: true, info: 'Creating the installation strategy, logistics plan, and execution approach.' },
   { i: 7, phase: 'Buildots Training', name: 'BD System Permissions', office: true, info: 'Granting required access to Buildots systems and tools.' },

@@ -1,21 +1,23 @@
 import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { STEPS, TODAY } from '../data/seed';
-import { plannedStepDates, plannedStepToday, effectiveStep, stepStatus, recruitBy, buildStarted, recurringVisits, parseDate, projectStatus, addDays, fmtDate } from '../data/derive';
+import { plannedStepDates, plannedStepToday, effectiveStep, stepStatus, recruitBy, readinessBy, buildStarted, recurringVisits, parseDate, projectStatus, addDays, fmtDate } from '../data/derive';
 
 // Zoomable, pannable stage Gantt. Each project's 24 steps are blocks on a real time axis;
 // block colour = stepStatus(p, i) (the SAME derivation the Process board + drawer use, so
-// any edit there recolours the square live). First Installation (step 16) sits on the
-// Requested-Delivery marker (◆). A step still open past its planned date reads red = behind.
-// Today line = where you should be; the caret (▲) = the current stage. Range menu zooms;
-// scroll sideways to pan through the full project period to its end date.
+// any edit there recolours the square live). Step 1 = recruit-by (delivery − 6wk); the
+// prep/office steps close on the Ready-by marker (delivery − 10 business days); First
+// Installation (step 17) sits on the Requested-delivery ◆. A step still open past its planned
+// date reads red = behind. Range menu zooms; scroll sideways to pan to each project's end.
 const NAME_W = 158, ROW_H = 34, DAY = 86400000;
 const RANGES = [{ k: '1W', d: 7 }, { k: '2W', d: 14 }, { k: '1M', d: 30 }, { k: '3M', d: 90 }, { k: '6M', d: 180 }, { k: '1Y', d: 365 }, { k: 'All', d: null }];
 const STATUS_COLOR = { done: 'var(--bd-green)', doing: 'var(--bd-amber-s)', blocked: 'var(--bd-red)', skipped: 'var(--bd-ink-3)', todo: '#EBECEE' };
+const STATUS_LABEL = { done: 'Done', doing: 'In progress', blocked: 'Blocked', skipped: 'Skipped (returning path)', behind: 'Behind — overdue', todo: 'Upcoming' };
 
-export default function GanttTimeline({ projects, onOpen }) {
+export default function GanttTimeline({ projects, onOpen, onOpenStageGuide }) {
   const scrollRef = useRef(null);
   const [trackW, setTrackW] = useState(900);
   const [rangeKey, setRangeKey] = useState('6M');
+  const [tip, setTip] = useState(null); // black hover tooltip: { n, name, info, label, planned, top, left }
 
   const stamps = projects.flatMap((p) => [recruitBy(p), p.projectEnd || p.requestedDelivery]).filter(Boolean).map((d) => parseDate(d).getTime());
   const originMs = stamps.length ? Math.min(...stamps) : parseDate(TODAY).getTime();
@@ -55,6 +57,11 @@ export default function GanttTimeline({ projects, onOpen }) {
     for (; d <= end; d.setMonth(d.getMonth() + 3)) ticks.push({ x: tx(d.getTime()), label: d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) });
   }
 
+  const showTip = (e, i, s, label, planned) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setTip({ n: i + 1, name: s.name, info: s.info, label, planned, top: r.top, left: r.left + r.width / 2 });
+  };
+
   return (
     <div className="gantt">
       <div className="gantt-menu">
@@ -62,8 +69,9 @@ export default function GanttTimeline({ projects, onOpen }) {
         {RANGES.map((r) => <button key={r.k} className={`gbtn ${rangeKey === r.k ? 'on' : ''}`} onClick={() => setRangeKey(r.k)}>{r.k}</button>)}
         <span className="spacer" />
         <span className="small muted">scroll sideways to move through time · click a project to open</span>
+        {onOpenStageGuide && <button className="btn btn-sm gantt-stageguide" onClick={onOpenStageGuide} title="What each of the 24 stage numbers means">Stage guide</button>}
       </div>
-      <div className="gantt-scroll" ref={scrollRef}>
+      <div className="gantt-scroll" ref={scrollRef} onScroll={() => tip && setTip(null)}>
         <div className="gantt-inner" style={{ width: NAME_W + contentW }}>
           <div className="gantt-axis" style={{ width: NAME_W + contentW }}>
             {ticks.map((t, i) => <span key={i} className="gtick" style={{ left: NAME_W + t.x }}>{t.label}</span>)}
@@ -77,7 +85,7 @@ export default function GanttTimeline({ projects, onOpen }) {
             const started = buildStarted(p);
             const st = projectStatus(p);
             const dot = st === 'ontrack' ? 'green' : st === 'atrisk' ? 'amber' : st === 'critical' ? 'red' : 'grey';
-            const rd = p.requestedDelivery;
+            const rd = p.requestedDelivery, rb = readinessBy(p);
             return (
               <div className="gantt-row" key={p.id} style={{ height: ROW_H }}>
                 <div className="gantt-name rowlink" style={{ width: NAME_W }} onClick={() => onOpen(p.id)} title={`Open ${p.name}`}>
@@ -93,20 +101,21 @@ export default function GanttTimeline({ projects, onOpen }) {
                   const left = NAME_W + x(startD), w = Math.max(3, x(stopD) - x(startD));
                   const status = stepStatus(p, i);
                   // a discrete build step (0-20) still open past its planned date = behind → red.
-                  // the wide operational tail (21-23, ongoing delivery + billing) is never flagged
-                  // red — it would paint a huge bar to project end and just means "not started yet".
+                  // the wide operational tail (21-23) is never flagged red (would paint a huge bar).
                   const overdue = status === 'todo' && started && startD < TODAY && i < 21;
                   const bg = overdue ? 'var(--bd-red)' : (STATUS_COLOR[status] || STATUS_COLOR.todo);
                   const light = status === 'todo' && !overdue;
-                  const tip = `${i + 1}. ${s.name}${overdue ? ' — overdue (planned ' + fmtDate(startD) + ')' : ''}${s.info ? '\n' + s.info : ''}`;
+                  const label = STATUS_LABEL[overdue ? 'behind' : status] || 'Upcoming';
                   return (
-                    <div key={i} className="gblock" title={tip}
+                    <div key={i} className="gblock"
+                      onMouseEnter={(e) => showTip(e, i, s, label, startD)} onMouseLeave={() => setTip(null)}
                       style={{ left, width: w, background: bg, borderColor: light ? 'var(--bd-border)' : 'transparent' }}>
                       {w >= 15 && <span className="gblk-n" style={{ color: light ? '#8A8B8D' : '#fff' }}>{i + 1}</span>}
                     </div>
                   );
                 })}
                 {recurringVisits(p).map((rv, i) => <div key={`rv${i}`} className="gvisit" style={{ left: NAME_W + x(rv) }} title={`recurring visit ${rv}`} />)}
+                {rb && <div className="grd-ready" style={{ left: NAME_W + x(rb) }} title={`Ready-by (Readiness SLA) — ${fmtDate(rb)}: prep should be done, technician ready ~10 business days early`} />}
                 {rd && <div className="grd" style={{ left: NAME_W + x(rd) }} title={`Requested delivery — ${fmtDate(rd)} (First Installation is due here)`} />}
                 <div className="gcaret" style={{ left: NAME_W + x(planned[eff] || TODAY) }} title={`Current stage — step ${eff + 1}: ${STEPS[eff].name}`} />
               </div>
@@ -114,6 +123,13 @@ export default function GanttTimeline({ projects, onOpen }) {
           })}
         </div>
       </div>
+      {tip && (
+        <div className="gtip" style={{ top: tip.top, left: tip.left }}>
+          <div className="gtip-h">{tip.n}. {tip.name}</div>
+          {tip.info && <div className="gtip-info">{tip.info}</div>}
+          <div className="gtip-meta">Planned {fmtDate(tip.planned)} · {tip.label}</div>
+        </div>
+      )}
     </div>
   );
 }

@@ -299,16 +299,15 @@ export default function Schedule() {
             <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-red)' }} /> Behind (past its planned date)</span>
             <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-ink-3)' }} /> Skipped (returning)</span>
             <span className="lk"><span className="gswatch" style={{ background: '#EBECEE', border: '1px solid var(--bd-border)' }} /> Upcoming</span>
+            <span className="lk"><span className="grd-ready-legend" /> Ready-by (Readiness SLA · ~10 days early)</span>
             <span className="lk"><span className="grd-legend" /> Requested delivery (First Installation due)</span>
             <span className="lk"><span className="dot-s grey" /> Quarterly visit</span>
             <span className="lk"><span style={{ display: 'inline-block', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '6px solid var(--bd-ink)', verticalAlign: 'middle' }} /> Current stage</span>
             <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-ink-3)', verticalAlign: 'middle' }} /> Today</span>
-            <span className="spacer" />
-            <button className="btn btn-sm" onClick={() => setStageGuide(true)} title="What each of the 24 stage numbers means">Stage guide</button>
             <span style={{ flexBasis: '100%', height: 0 }} />
-            <span className="small muted">Each square is one of the 24 process steps on a real time axis, running to the project's end date. First Installation sits on the ◆ Requested-delivery marker. A square goes red once it is past its planned date and still open — that is how far behind the project is versus where it should be by Today. Colours are live from the process: a move on the Process board or a ✓/✕ in the project drawer recolours the square here.</span>
+            <span className="small muted">Each square is one of the 24 process steps on a real time axis, running to the project's end date. Step 1 starts at recruit-by (6 weeks out), the office prep closes on the amber Ready-by marker (10 business days early), and First Installation sits on the ◆ Requested-delivery marker — the same template for every project. A square goes red once it is past its planned date and still open, showing how far behind the project is versus Today. Colours are live from the process: a move on the Process board or a ✓/✕ in the drawer recolours the square here.</span>
           </div>
-          <GanttTimeline projects={sorted} onOpen={(id) => setDrawer(id)} />
+          <GanttTimeline projects={sorted} onOpen={(id) => setDrawer(id)} onOpenStageGuide={() => setStageGuide(true)} />
           {stageGuide && (
             <Modal title="Stage guide — the 24 process steps" onClose={() => setStageGuide(false)} footer={<button className="btn-text" onClick={() => setStageGuide(false)}>Close</button>}>
               <div className="small muted" style={{ marginBottom: 12 }}>Every square on the timeline is one of these steps, grouped into the 7 phases. Returning-tech projects skip Buildots Training + PPE (the fast path).</div>
