@@ -120,7 +120,7 @@ select.input { cursor: pointer; }
 .funnel { display: flex; flex-direction: column; gap: 8px; }
 .funnel-row { display: flex; align-items: center; gap: 10px; }
 .funnel-bar { height: 26px; border-radius: 5px; background: var(--bd-indigo); opacity: .85; display: flex; align-items: center; padding: 0 8px; color: #fff; font-size: 12px; font-weight: 600; min-width: 34px; }
-.funnel-lbl { width: 84px; font-size: 12px; color: var(--bd-ink-2); }
+.funnel-lbl { width: 84px; flex-shrink: 0; font-size: 12px; color: var(--bd-ink-2); }
 
 /* ============ timeline (schedule) ============ */
 .timeline { position: relative; }
