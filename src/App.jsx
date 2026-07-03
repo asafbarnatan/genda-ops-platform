@@ -10,9 +10,9 @@ import Process from './screens/Process.jsx';
 
 const SCREENS = [
   { id: 'mission', label: 'Mission Control', comp: MissionControl },
-  { id: 'schedule', label: 'Schedule', comp: Schedule },
-  { id: 'pipeline', label: 'Pipeline', comp: Pipeline },
-  { id: 'quality', label: 'Quality', comp: Quality },
+  { id: 'schedule', label: 'Project Schedule', comp: Schedule },
+  { id: 'pipeline', label: 'Recruitment Pipeline', comp: Pipeline },
+  { id: 'quality', label: 'Technician Quality', comp: Quality },
   { id: 'alerts', label: 'Alerts', comp: Alerts },
   { id: 'process', label: 'Process', comp: Process },
 ];

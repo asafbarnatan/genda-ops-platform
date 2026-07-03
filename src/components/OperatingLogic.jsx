@@ -3,7 +3,7 @@ import { Modal } from './Modal.jsx';
 
 // "Operating logic" — a click-to-open reference on each screen carrying the reasoning,
 // rules, and thresholds we defined per part. Dense facts live in compact tables; only
-// genuine judgment calls stay as prose. Ready answers for director questions.
+// genuine judgment calls stay as prose. Plain language, ready for director questions.
 const CONTENT = {
   pipeline: {
     part: 'Part 1', title: 'Recruitment Pipeline — operating logic',
@@ -13,14 +13,17 @@ const CONTENT = {
         'Stages are gates, not labels: each candidate carries stage + progress-in-stage + velocity (days vs SLA) + outcome, attributed to its channel.',
         'Drop-off is tracked by channel — leakage is the raw material of channel quality.',
       ] },
-      { h: 'Stage SLAs → time-to-ready', table: {
-        cols: ['Stage gate', 'SLA'],
-        rows: [['Sourced → Screened', '≤ 5 days'], ['Screened → Onboarded', '≤ 10 days'], ['Onboarding', '≤ 12 days'], ['Sourced-to-ready', '≈ 27 days']],
-      } },
-      { h: 'Lead time — back-scheduled from delivery', table: {
-        cols: ['Milestone', 'When', 'Goal'],
-        rows: [['Recruit-by', 'RD − 42d (~6 wks)', 'start sourcing'], ['Ready-by', 'RD − 14d', 'fully ready (Readiness SLA, 10 business days)'], ['Requested Delivery', 'RD', 'install / go-live']],
-      } },
+      { h: 'Recruitment lead time — why we start 6 weeks out', table: {
+        cols: ['Step', 'Time'],
+        rows: [
+          ['Sourced → Screened', '≤ 5 days'],
+          ['Screened → Onboarded', '≤ 10 days'],
+          ['Onboarding', '≤ 12 days'],
+          ['= Sourced-to-Ready', '≈ 27 days'],
+          ['+ readiness safety buffer', '10 business days'],
+          ['⇒ start recruiting', '≈ 6 weeks before delivery'],
+        ],
+      }, note: 'So for each project: recruit-by = delivery − 6 weeks · ready-by = delivery − 10 business days (the Readiness SLA). Miss the recruit-by and the buffer is gone.' },
       { h: 'Technicians needed (per project)', table: {
         cols: ['Project size', 'Techs'],
         rows: [['≤ 20 floors & 1 building', '1'], ['21-40 floors or 2 buildings', '2'], ['41+ floors', '3']],
@@ -40,10 +43,14 @@ const CONTENT = {
         'Manage change, not a static plan: every slip is made visible, attributed to a cause, and auto-converted into risk (re-runs the Readiness SLA clock).',
         'Timeline primary + a linked table; at-risk projects float to the top.',
       ] },
-      { h: 'Fields — progressive disclosure', table: {
-        cols: ['Tier', 'Carries'],
-        rows: [['Timeline', '~6 signals per row'], ['Table lens', 'curated, sortable columns'], ['Drawer', 'all 17 provided columns + derived']],
-      } },
+      { h: 'Fields — glanceable first, full detail on click', table: {
+        cols: ['View', 'Shows', 'Good for'],
+        rows: [
+          ['Timeline', '~6 key signals per row', 'reading status at a glance'],
+          ['Table', 'curated, sortable columns', 'comparing and sorting'],
+          ['Drawer (click a project)', 'all 17 provided fields + derived', 'the full record'],
+        ],
+      }, note: 'The value: the main view stays readable — no screen is dumped with 17 columns — and the full dataset is always one click away. Depth without clutter.' },
       { h: 'Date changes — two sharp signals', items: [
         'Acceleration-as-risk: a date pulled earlier compresses the runway and can breach lead time in one move — flagged critical, not "good news."',
         'Volatility: a date moved ≥3 times is unstable regardless of where it sits now.',
@@ -57,9 +64,12 @@ const CONTENT = {
     q: 'The 3 to 5 metrics for reliability over time; how you display them; the threshold that triggers review or removal.',
     groups: [
       { h: 'Five metrics → one weighted composite (1-5)', table: {
-        cols: ['Metric', 'Weight', 'Source'],
-        rows: [['Coverage completeness', '30%', 'Buildots platform'], ['Reliability (no-show)', '25%', 'Regional Lead'], ['On-time arrival', '20%', 'Regional Lead'], ['Upload on-time', '15%', 'Buildots platform'], ['Issue / rework', '10%', 'Regional Lead']],
-      }, note: 'Weighted by consequence, so a strong coverage score cannot offset a no-show.' },
+        cols: ['', 'Coverage', 'Reliability', 'On-time', 'Upload', 'Issues', 'Composite'],
+        rows: [
+          ['Weight', '30%', '25%', '20%', '15%', '10%', ''],
+          ['Example tech', '5', '4', '4', '5', '4', '4.45'],
+        ],
+      }, note: 'Composite = the weighted average of the five 1-5 scores (here 4.45). Weighted by consequence; a no-show is caught separately by a hard gate (below), never left to the average.' },
       { h: 'Threshold ladder', table: {
         cols: ['Trigger', 'Action'],
         rows: [['Any no-show (hard gate)', 'Benched'], ['Rolling composite < 3.0', 'Benched'], ['< 2.0 sustained · 2nd no-show · failed review', 'Removed'], ['Clean review', 'back to Active']],
@@ -125,15 +135,19 @@ const CONTENT = {
     groups: [
       { h: 'One concept, two dashboards', items: [
         'Two dashboards, one per persona, sharing one north-star and separated by altitude.',
-        'North-star on both: on-time delivery to the client — the stated #1 success metric (100% SLA adherence, zero dropped). Readiness SLA is the internal leading indicator behind it.',
+        'North-star on both: on-time delivery to the client — the stated #1 success metric (100% SLA adherence, zero dropped opportunities).',
+      ] },
+      { h: 'Readiness SLA — the leading indicator', items: [
+        'The customer date is the promise; the Readiness SLA (ready 10 business days early) is how we protect it.',
+        'A readiness miss is the early warning of a customer-date miss — we act on it before the client ever feels it.',
       ] },
       { h: 'The difference', table: {
-        cols: ['', 'OM view', 'Manager view'],
+        cols: ['', 'OM (you)', 'Manager'],
         rows: [
-          ['Answers', 'what do I act on today?', 'healthy and on trajectory?'],
-          ['Health', 'full, drillable', 'rollups + exceptions'],
-          ['Action cockpit', 'yes', 'no — never task-level'],
-          ['Cadence', 'live, all day', 'a weekly glance'],
+          ['Question', 'what do I do today?', 'is it healthy and on track?'],
+          ['Detail', 'every tile, drill to any project', 'totals + only what is off-track'],
+          ['Action list', 'yes — the daily queue', 'no — never task-level'],
+          ['How often', 'continuously, all day', 'a weekly check'],
         ],
       } },
       { h: 'A deliberate restraint', items: [
@@ -166,10 +180,12 @@ export default function OperatingLogic({ part }) {
               <div key={i} className="oplogic-group">
                 <div className="oplogic-h">{g.h}</div>
                 {g.table ? (
-                  <table className="oplogic-table">
-                    <thead><tr>{g.table.cols.map((c, ci) => <th key={ci}>{c}</th>)}</tr></thead>
-                    <tbody>{g.table.rows.map((r, ri) => <tr key={ri}>{r.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>)}</tbody>
-                  </table>
+                  <div className="oplogic-tablewrap">
+                    <table className="oplogic-table">
+                      <thead><tr>{g.table.cols.map((c, ci) => <th key={ci}>{c}</th>)}</tr></thead>
+                      <tbody>{g.table.rows.map((r, ri) => <tr key={ri}>{r.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>)}</tbody>
+                    </table>
+                  </div>
                 ) : (
                   <ul>{g.items.map((it, j) => <li key={j}>{it}</li>)}</ul>
                 )}
