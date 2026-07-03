@@ -9,7 +9,7 @@ import { StatusPill } from './bits.jsx';
 // stepDisplayStatus(p, i) (the SAME derivation the drawer stepper + legend use). Step 1 =
 // recruit-by (delivery − 6wk); prep closes on the Ready-by marker (delivery − 10 business days);
 // First Installation (step 17) sits on the Requested-delivery ◆. Click a square to set its status.
-const NAME_W = 98, STATUS_W = 96, LABEL_W = NAME_W + STATUS_W, ROW_H = 34, DAY = 86400000;
+const NAME_W = 98, STATUS_W = 104, LABEL_W = NAME_W + STATUS_W, ROW_H = 42, DAY = 86400000;
 const RANGES = [{ k: '1W', d: 7 }, { k: '2W', d: 14 }, { k: '1M', d: 30 }, { k: '3M', d: 90 }, { k: '6M', d: 180 }, { k: '1Y', d: 365 }, { k: 'All', d: null }];
 const STATUS_COLOR = { done: 'var(--bd-green)', doing: 'var(--bd-amber-s)', behind: 'var(--bd-red)', skipped: 'var(--bd-ink-3)', todo: '#EBECEE' };
 const STATUS_LABEL = { done: 'Done', doing: 'In progress', behind: 'Behind', skipped: 'Skipped (returning path)', todo: 'Upcoming' };
@@ -82,28 +82,36 @@ export default function GanttTimeline({ projects, onOpen, onOpenStageGuide, onSe
       <div className="gantt-scroll" ref={scrollRef} onScroll={() => { if (tip) setTip(null); if (editor) setEditor(null); }}>
         <div className="gantt-inner" style={{ width: LABEL_W + contentW }}>
           <div className="gantt-axis" style={{ width: LABEL_W + contentW }}>
-            <div className="gantt-axis-head gah-name" style={{ width: NAME_W }}>Project</div>
-            <div className="gantt-axis-head gah-status" style={{ width: STATUS_W, left: NAME_W }}>Status</div>
+            <div className="gantt-frozen gantt-frozen-head" style={{ width: LABEL_W }}>
+              <div className="gah-cell" style={{ width: NAME_W }}>Project</div>
+              <div className="gah-cell gah-status" style={{ width: STATUS_W }}>Status · stage</div>
+            </div>
             {ticks.map((t, i) => <span key={i} className="gtick" style={{ left: LABEL_W + t.x }}>{t.label}</span>)}
           </div>
           <div className="gantt-today" style={{ left: LABEL_W + x(TODAY) }}><span>Today</span></div>
           {projects.map((p) => {
             const planned = plannedStepDates(p);
             const eff = effectiveStep(p);
+            const disp = STEPS.map((s, i) => stepDisplayStatus(p, i, { planned }));
+            const doneCount = disp.filter((d) => d === 'done').length;
+            const behindCount = disp.filter((d) => d === 'behind').length;
             const rd = p.requestedDelivery, rb = readinessBy(p);
             return (
               <div className="gantt-row" key={p.id} style={{ height: ROW_H }}>
-                <div className="gantt-name rowlink" style={{ width: NAME_W }} onClick={() => onOpen(p.id)} title={`Open ${p.name}`}>
-                  <span className="gname">{p.name}</span>
-                </div>
-                <div className="gantt-status" style={{ width: STATUS_W, left: NAME_W }} onClick={() => onOpen(p.id)}>
-                  <StatusPill status={projectStatus(p)} />
+                <div className="gantt-frozen" style={{ width: LABEL_W }}>
+                  <div className="gantt-name rowlink" style={{ width: NAME_W }} onClick={() => onOpen(p.id)} title={`Open ${p.name}`}>
+                    <span className="gname">{p.name}</span>
+                  </div>
+                  <div className="gantt-status" style={{ width: STATUS_W }} onClick={() => onOpen(p.id)}>
+                    <StatusPill status={projectStatus(p)} />
+                    <div className="gstage-sum">{doneCount}/24 done{behindCount > 0 && <span className="gstage-behind"> · {behindCount} behind</span>}</div>
+                  </div>
                 </div>
                 {STEPS.map((s, i) => {
                   const startD = planned[i]; if (!startD) return null;
                   const stopD = planned[i + 1] || addDays(startD, 12);
                   const left = LABEL_W + x(startD), w = Math.max(3, x(stopD) - x(startD));
-                  const status = stepDisplayStatus(p, i, { planned });
+                  const status = disp[i];
                   const lightBlk = status === 'todo';
                   return (
                     <div key={i} className={`gblock ${onSetStep ? 'editable' : ''} ${editor && editor.pid === p.id && editor.i === i ? 'editing' : ''}`}
