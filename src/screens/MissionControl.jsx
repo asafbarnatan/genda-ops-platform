@@ -80,7 +80,7 @@ export default function MissionControl() {
       title: 'Customer SLA adherence', value: `${m.customerSlaAdherence}%`, link: { screen: 'schedule', label: 'Open the Schedule' },
       why: 'This is the promise made to the client. Missing a committed delivery date is the fastest way to lose their trust and future work — it is the number the whole operation exists to protect.',
       formula: `Projects delivered on or before the committed date ÷ all active projects = ${aps.length - overdueList.length} of ${aps.length}.`,
-      note: 'A single miss (27th Street) drops us below 100%.',
+      note: overdueList.length === 0 ? 'Every active project is on track to meet its committed date.' : overdueList.length === 1 ? `A single miss (${overdueList[0].name}) drops us below 100%.` : `${overdueList.length} misses (${overdueList.map((p) => p.name).join(', ')}) drop us below 100%.`,
       items: aps.map((p) => ({ name: p.name, note: projectStatus(p) === 'critical' ? 'missed / overdue' : 'on track to meet the date', bad: projectStatus(p) === 'critical', focus: p.id })),
     },
     dropped: {
@@ -115,7 +115,7 @@ export default function MissionControl() {
     },
     avgQuality: {
       title: 'Avg technician quality', value: m.avgQuality, link: { screen: 'quality', label: 'Open Quality' },
-      formula: `Mean of the active roster's composites = (${acts.map((t) => qualityComposite(t.metrics)).join(' + ')}) ÷ ${acts.length}.`,
+      formula: acts.length ? `Mean of the active roster's composites = (${acts.map((t) => qualityComposite(t.metrics)).join(' + ')}) ÷ ${acts.length}.` : 'No active technicians in the roster.',
       note: `${flaggedTechs.length} technicians flagged (benched / removed) sit outside this average.`,
       items: acts.map((t) => ({ name: t.name, note: `composite ${qualityComposite(t.metrics)}`, bad: qualityComposite(t.metrics) < 3, warn: qualityComposite(t.metrics) < 3.5, focus: t.id, goScreen: 'quality' })),
     },

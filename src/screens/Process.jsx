@@ -79,7 +79,9 @@ export default function Process() {
         </div>
         <div className="card card-pad" style={{ flex: '1 1 340px', borderColor: 'var(--bd-red)' }}>
           <div className="micro" style={{ marginBottom: 6 }}>Live bottleneck — where projects actually sit</div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}><b style={{ color: '#b23524' }}>{bn.phase}</b> holds {bn.count} of {total} active projects right now (highlighted below). That is the first place to unblock.</div>
+          {total === 0
+            ? <div style={{ fontSize: 14, fontWeight: 600 }}>No active projects right now — add one to see where the queue forms.</div>
+            : <div style={{ fontSize: 14, fontWeight: 600 }}><b style={{ color: '#b23524' }}>{bn.phase}</b> holds {bn.count} of {total} active projects right now (highlighted below). That is the first place to unblock.</div>}
         </div>
       </div>
 
