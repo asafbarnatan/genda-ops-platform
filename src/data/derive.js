@@ -193,7 +193,7 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
 }
 
 // ---- process steps (Part 2 drawer + Part 5 aggregate) ----
-const RETURN_SKIP = new Set([7, 8, 9, 10, 12]); // Buildots Training + PPE skipped on the fast path
+export const RETURN_SKIP = new Set([7, 8, 9, 10, 12]); // Buildots Training + PPE skipped on the fast path (Installation Kits still ship per project)
 export function stepStatus(project, i) {
   const override = project.stepState?.[i];
   if (override) return override;

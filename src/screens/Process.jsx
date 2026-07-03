@@ -1,22 +1,24 @@
 import { useStore } from '../data/store.jsx';
 import { STEPS } from '../data/seed';
-import { projectsAtStep, topBottleneck, activeProjects, effectiveStep } from '../data/derive';
+import { projectsAtStep, topBottleneck, activeProjects, effectiveStep, RETURN_SKIP } from '../data/derive';
 import OperatingLogic from '../components/OperatingLogic.jsx';
 
-const RETURN_SKIP_PHASES = new Set(['Buildots Training', 'Equipment Setup']);
 const phaseSteps = (phase) => STEPS.filter((s) => s.phase === phase);
 
 function PhaseBlock({ phase, atStep, onChip, onMove, small, half, bnPhase }) {
   const steps = phaseSteps(phase);
   const count = steps.reduce((n, s) => n + (atStep[s.i]?.length || 0), 0);
   const isBottleneck = phase === bnPhase && count > 0;
-  const skip = RETURN_SKIP_PHASES.has(phase);
+  // returning path: a phase is fully skipped only when ALL its steps are skipped; otherwise
+  // we tag the individual skipped steps (e.g. Equipment Setup skips PPE but still ships the kit).
+  const fullySkip = steps.every((s) => RETURN_SKIP.has(s.i));
+  const partialSkip = !fullySkip && steps.some((s) => RETURN_SKIP.has(s.i));
   return (
     <div className={`wf2-phase ${isBottleneck ? 'bottleneck' : ''}`} style={half ? { flex: 1 } : {}}>
       <div className="wf2-phead">
         <span className="pn">{phase}</span>
         <span className="pill grey">{steps[0].office ? 'office' : 'field'}</span>
-        {skip && <span className="pill indigo">skipped on returning path</span>}
+        {fullySkip && <span className="pill indigo">skipped on returning path</span>}
         {isBottleneck && <span className="pill red">bottleneck · most projects here</span>}
         <span className="spacer" />
         <span className="small muted">{count} project{count === 1 ? '' : 's'} here</span>
@@ -24,11 +26,13 @@ function PhaseBlock({ phase, atStep, onChip, onMove, small, half, bnPhase }) {
       <div className="wf2-steps" style={small || half ? { gridTemplateColumns: '1fr' } : {}}>
         {steps.map((s) => {
           const ps = atStep[s.i] || [];
+          const stepSkip = partialSkip && RETURN_SKIP.has(s.i);
           return (
             <div key={s.i} className={`wf2-step ${isBottleneck && ps.length ? 'hot' : ''}`}
+              title={s.info || ''}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { const id = e.dataTransfer.getData('pid'); if (id) onMove(id, s.i); }}>
-              <div className="st-head"><span className="small muted mono-num">{s.i + 1}</span><span>{s.name}</span>{ps.length > 0 && <span className="c">{ps.length}</span>}</div>
+              <div className="st-head"><span className="small muted mono-num">{s.i + 1}</span><span>{s.name}</span>{stepSkip && <span className="pill indigo" style={{ fontSize: 9 }} title="Skipped on the returning-tech path">↩ returning skip</span>}{ps.length > 0 && <span className="c">{ps.length}</span>}</div>
               {ps.length > 0 && <div className="wf2-chips">{ps.map((p) => <span key={p.id} className="wf2-chip" draggable onDragStart={(e) => e.dataTransfer.setData('pid', p.id)} onClick={() => onChip(p.id)} title="drag to another step, or click to open">{p.name}</span>)}</div>}
             </div>
           );
@@ -116,7 +120,7 @@ export default function Process() {
         <div className="small muted" style={{ textAlign: 'center', marginTop: 6 }}>Billing (Monthly Payment Approval) runs every month in parallel with ongoing delivery — shown side by side, not after.</div>
       </div>
 
-      <div className="micro" style={{ margin: '22px 0 8px' }}>Structural improvement opportunities — how to make the whole process faster (independent of today's live queue)</div>
+      <div className="section-head" style={{ margin: '22px 0 12px' }}>Structural improvement opportunities — how to make the whole process faster (independent of today's live queue)</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {IMPROVEMENTS.map((b, i) => (
           <div className="insight" key={i}>
