@@ -50,16 +50,6 @@ const CONTENT = {
           ['First Install ◆', 'Requested delivery', 'the client promise'],
         ],
       }, note: 'Colour is live — set a stage status anywhere (drawer, square, Process board) and it updates here. Red = past its planned date and still open.' },
-      { h: 'Views + owners', table: {
-        cols: ['Layer', 'Holds'],
-        rows: [
-          ['Timeline', '~6 signals / row · status at a glance'],
-          ['Table', 'sortable columns · compare'],
-          ['Drawer', 'all 17 fields + derived · full record'],
-          ['Opportunity Owner', 'Salesforce sales rep — not a step or tech'],
-          ['Regional Lead · Tech', 'on-site quality · runs the install'],
-        ],
-      } },
       { h: 'Date changes — two signals', table: {
         cols: ['Signal', 'Rule', 'Response'],
         rows: [
