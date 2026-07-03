@@ -87,9 +87,9 @@ const CONTENT = {
       { h: 'The framework', items: [
         'Judged by what it does NOT interrupt you for. Three tiers by time-to-consequence × client-impact.',
         'Tie-break: anything threatening the Readiness SLA or client data outranks internal efficiency.',
-        'The system watches all 12 signals; attention is curated to the six below.',
+        'The system watches all 12 signals; attention is curated to the five below.',
       ] },
-      { h: 'The 6 triggers → action', table: {
+      { h: 'The 5 triggers → action', table: {
         cols: ['#', 'Tier', 'Trigger', 'Action'],
         rows: [
           ['1', '🟠', 'Recruitment window opens, no tech', 'start recruiting / reserve a pool tech'],
@@ -97,7 +97,6 @@ const CONTENT = {
           ['3', '🔴', 'Acceleration breaches lead time', 'recompute runway; cover or escalate'],
           ['4', '🔴', 'No-show / cancel at deploy', 'pool reassignment; auto-bench'],
           ['5', '🟠', 'Coverage shortfall < 90%', 'attribute cause before penalising'],
-          ['6', '🟢', 'Routine date change (no breach)', 'auto-propagate + acknowledge'],
         ],
       } },
       { h: 'Routing', table: {

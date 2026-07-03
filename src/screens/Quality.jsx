@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend as RLegend } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
 import { qualityComposite, suggestedPool, qualityTrend, metricTrend, activeTechs, METRIC_DEFS, assignedNames } from '../data/derive';
 import { PoolPill, FilterBar } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
 import OperatingLogic from '../components/OperatingLogic.jsx';
+import QualityTrendChart from '../components/QualityTrendChart.jsx';
 
-const LINE_COLORS = ['#5B4FE9', '#3FB37F', '#E6B23C', '#8B7FE8', '#E5533D', '#2F6DB5'];
 const METRIC_LINE = { coverage: '#5B4FE9', reliability: '#3FB37F', ontime: '#E6B23C', upload: '#8B7FE8', issues: '#E5533D' };
 
 function CopyRow({ label, link }) {
@@ -111,20 +111,9 @@ export default function Quality() {
       <FilterBar filters={filters} values={f} onChange={(k, v) => setF((s) => ({ ...s, [k]: v }))} />
 
       <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-head"><h3>Monthly quality trend</h3><span className="muted small">X = month · Y = 2-5 (zoomed so volatility is visible)</span></div>
+        <div className="card-head"><h3>Monthly quality trend</h3><span className="muted small">avg composite (1-5) · hatched zones = bench (&lt;3.0) / remove (&lt;2.0)</span></div>
         <div className="card-pad">
-          <div className="chart-wrap">
-            <ResponsiveContainer>
-              <LineChart data={trend} margin={{ left: -18, right: 12, top: 8 }}>
-                <CartesianGrid stroke="#EFEFEF" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9A9B9D' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[2, 5]} tick={{ fontSize: 11, fill: '#9A9B9D' }} axisLine={false} tickLine={false} />
-                <Tooltip />
-                <RLegend wrapperStyle={{ fontSize: 11 }} />
-                {acts.map((t, i) => <Line key={t.id} type="monotone" dataKey={t.id} name={t.name} stroke={LINE_COLORS[i % LINE_COLORS.length]} strokeWidth={2} dot={{ r: 2 }} />)}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <QualityTrendChart data={trend} techs={acts} />
         </div>
       </div>
 

@@ -12,6 +12,9 @@ export function StoreProvider({ children }) {
   const [acks, setAcks] = useState([]);       // acknowledged/"done" alert ids
   const [manualAlerts, setManualAlerts] = useState([]); // manually-added events
   const manualSeq = useRef(0); // monotonic id counter — never reused, so delete-then-add can't collide
+  const [snoozed, setSnoozed] = useState([]);        // alerts snoozed (waiting / no resource)
+  const [alertNotes, setAlertNotes] = useState({});  // alert id -> comment/note
+  const [alertTier, setAlertTierMap] = useState({}); // alert id -> manual tier override (drag)
 
   useEffect(() => {
     activeAdapter.save({ projects: state.projects, technicians: state.technicians, candidates: state.candidates });
@@ -30,7 +33,11 @@ export function StoreProvider({ children }) {
     clearFocus: () => setRoute((r) => ({ ...r, focus: null })),
     acks, toggleAck: (id) => setAcks((a) => a.includes(id) ? a.filter((x) => x !== id) : [...a, id]),
     manualAlerts, addManualAlert: (a) => setManualAlerts((m) => [...m, { ...a, id: `M-${++manualSeq.current}`, manual: true }]),
+    updateManualAlert: (id, patch) => setManualAlerts((m) => m.map((x) => (x.id === id ? { ...x, ...patch } : x))),
     removeManualAlert: (id) => setManualAlerts((m) => m.filter((x) => x.id !== id)),
+    snoozed, toggleSnooze: (id) => setSnoozed((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]),
+    alertNotes, setAlertNote: (id, text) => setAlertNotes((n) => ({ ...n, [id]: text })),
+    alertTier, setAlertTier: (id, tier) => setAlertTierMap((t) => ({ ...t, [id]: tier })),
 
     // generic CRUD, provenance auto-tagged fictive for user-added rows
     add: (coll, row) => mutate(coll, (arr) => [...arr, { ...row, provenance: row.provenance || 'fictive' }]),
@@ -39,7 +46,7 @@ export function StoreProvider({ children }) {
 
     resetDemo: () => setState(activeAdapter.reset()),
     adapterName: activeAdapter.name,
-  }), [state, persona, route, acks, manualAlerts, mutate]);
+  }), [state, persona, route, acks, manualAlerts, snoozed, alertNotes, alertTier, mutate]);
 
   return <StoreCtx.Provider value={api}>{children}</StoreCtx.Provider>;
 }

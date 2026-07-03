@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
 import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite, projectsByPhase, techniciansNeeded, assignedNames } from '../data/derive';
 import { Tile } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
 import OperatingLogic from '../components/OperatingLogic.jsx';
+import QualityTrendChart from '../components/QualityTrendChart.jsx';
 
 function TileDetail({ d, onGo, onClose }) {
   return (
@@ -32,7 +32,7 @@ function TileDetail({ d, onGo, onClose }) {
   );
 }
 
-function ActionRow({ a, onDone, onOpen }) {
+function ActionRow({ a, onDone, onSnooze, onOpen }) {
   return (
     <div className={`acard ${a.tier}`} style={{ marginBottom: 8 }} onClick={onOpen}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -42,6 +42,7 @@ function ActionRow({ a, onDone, onOpen }) {
           <div className="small" style={{ marginTop: 4 }}>→ {a.action}</div>
         </div>
         <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); onDone(); }}>Done</button>
+        <button className="btn btn-sm" title="Waiting / no resource to act now" onClick={(e) => { e.stopPropagation(); onSnooze(); }}>Snooze</button>
         <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open ↗</button>
       </div>
       {a.why && <div className="pop">{a.why}</div>}
@@ -50,15 +51,16 @@ function ActionRow({ a, onDone, onOpen }) {
 }
 
 export default function MissionControl() {
-  const { projects, technicians, candidates, persona, setPersona, navigate, acks, toggleAck } = useStore();
+  const { projects, technicians, candidates, persona, setPersona, navigate, acks, toggleAck, snoozed, toggleSnooze } = useStore();
   const m = missionTiles(projects, technicians, candidates);
   const alerts = deriveAlerts(projects, technicians);
   const trend = qualityTrend(technicians);
   const acts = activeTechs(technicians);
   const isOM = persona === 'om';
 
-  const open = alerts.filter((a) => a.tier !== 'info' && !acks.includes(a.id));
+  const open = alerts.filter((a) => a.tier !== 'info' && !acks.includes(a.id) && !snoozed.includes(a.id));
   const cleared = alerts.filter((a) => a.tier !== 'info' && acks.includes(a.id)).length;
+  const snoozedCount = alerts.filter((a) => a.tier !== 'info' && snoozed.includes(a.id) && !acks.includes(a.id)).length;
 
   const [detail, setDetail] = useState(null);
   const aps = activeProjects(projects);
@@ -221,36 +223,19 @@ export default function MissionControl() {
           <div className="card-head"><h3>Today · what needs action</h3><span className="muted small">🔴 Act Now → 🟠 This Week · hover for detail, Open to jump to the source</span></div>
           <div className="card-pad">
             {open.map((a) => (
-              <ActionRow key={a.id} a={a} onDone={() => toggleAck(a.id)} onOpen={() => a.link && navigate(a.link.screen, a.link.focus)} />
+              <ActionRow key={a.id} a={a} onDone={() => toggleAck(a.id)} onSnooze={() => toggleSnooze(a.id)} onOpen={() => a.link && navigate(a.link.screen, a.link.focus)} />
             ))}
             {open.length === 0 && <div className="muted">All clear — nothing critical open.</div>}
+            {snoozedCount > 0 && <div className="small muted" style={{ marginTop: 8 }}>💤 {snoozedCount} snoozed (waiting) <button className="btn-text btn-sm" onClick={() => alerts.forEach((a) => snoozed.includes(a.id) && toggleSnooze(a.id))}>un-snooze all</button></div>}
             {cleared > 0 && <div className="small muted" style={{ marginTop: 8 }}>✓ {cleared} cleared today <button className="btn-text btn-sm" onClick={() => alerts.forEach((a) => acks.includes(a.id) && toggleAck(a.id))}>undo</button></div>}
           </div>
         </div>
       ) : (
         <div className="grid" style={{ gridTemplateColumns: '1.6fr 1fr' }}>
           <div className="card">
-            <div className="card-head"><h3>Technician quality — trajectory</h3><span className="muted small">avg composite, active roster</span></div>
+            <div className="card-head"><h3>Technician quality — trajectory</h3><span className="muted small">avg composite (1-5) · same view as the Quality tab</span></div>
             <div className="card-pad">
-              <div className="chart-wrap" style={{ height: 260 }}>
-                <ResponsiveContainer>
-                  <AreaChart data={trend} margin={{ left: -18, right: 8, top: 8 }}>
-                    <defs>
-                      <linearGradient id="qg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8B7FE8" stopOpacity={0.32} />
-                        <stop offset="100%" stopColor="#8B7FE8" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#EFEFEF" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9A9B9D' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[2, 5]} tick={{ fontSize: 11, fill: '#9A9B9D' }} axisLine={false} tickLine={false} />
-                    <Tooltip />
-                    {acts.map((t, i) => (
-                      <Area key={t.id} type="monotone" dataKey={t.id} name={t.name} stroke="#8B7FE8" fill={i === 0 ? 'url(#qg)' : 'none'} strokeWidth={1.6} dot={false} />
-                    ))}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <QualityTrendChart data={trend} techs={acts} height={260} />
             </div>
           </div>
           <div className="card">

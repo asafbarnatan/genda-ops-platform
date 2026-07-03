@@ -6,6 +6,14 @@ export const WEIGHTS = { coverage: 0.30, reliability: 0.25, ontime: 0.20, upload
 export const round1 = (n) => Math.round(n * 10) / 10;
 export const round2 = (n) => Math.round(n * 100) / 100;
 
+// Stable per-technician color — same tech maps to the same color in every chart,
+// legend, and tooltip, regardless of filters (keyed by id, not array index).
+export const TECH_PALETTE = ['#5B4FE9', '#3FB37F', '#E6B23C', '#E5533D', '#8B7FE8', '#2F6DB5', '#D4A72C', '#C1478A'];
+export function techColor(id) {
+  const n = parseInt(String(id).replace(/\D/g, ''), 10);
+  return TECH_PALETTE[(Number.isNaN(n) ? 0 : n) % TECH_PALETTE.length];
+}
+
 // ---- quality ----
 export function qualityComposite(m) {
   if (!m) return 0;
@@ -134,9 +142,6 @@ export function deriveAlerts(projects, technicians, today = TODAY) {
     else if (d <= 42 && (p.assignedTechs?.length || 0) === 0 && p.floors) push('action', 'Staffing', 'Recruitment window open — no tech assigned', p.name, 'Start recruiting now or reserve a pool tech', 'OM', L, `${p.name} entered its ~6-week recruit window with no assigned technician.`);
     else if ((p.changeCount || 0) >= 3) push('action', 'Schedule', 'High volatility — date moved ≥3×', p.name, 'Investigate client/site cause; may pause recruiting until stable', 'OM', L, `${p.name}'s date has moved ${p.changeCount}× — unstable regardless of current position.`);
   });
-
-  // illustrative info-tier routine date change (shows the 🟢 tier + the #6-vs-#3 contrast)
-  push('info', 'Schedule', 'Routine date change (no lead-time breach)', 'Hub At · 02/08 → 04/08 (client update)', 'Auto-propagated to tech + RL; acknowledge loop; monitor', 'System / OM', { screen: 'schedule', focus: 'Hub At' }, 'A 2-day slip within tolerance. Auto-propagated; no action needed — the contrast to a critical date change.');
 
   const order = { critical: 0, action: 1, info: 2 };
   return A.sort((a, b) => order[a.tier] - order[b.tier]);
