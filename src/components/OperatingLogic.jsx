@@ -1,0 +1,184 @@
+import { useState } from 'react';
+import { Modal } from './Modal.jsx';
+
+// "Operating logic" — a click-to-open reference on each screen carrying the reasoning,
+// rules, and thresholds we defined per part. Dense facts live in compact tables; only
+// genuine judgment calls stay as prose. Ready answers for director questions.
+const CONTENT = {
+  pipeline: {
+    part: 'Part 1', title: 'Recruitment Pipeline — operating logic',
+    q: 'Track candidates Sourced to Deployed; data per candidate and per project; compare channel quality.',
+    groups: [
+      { h: 'How a candidate is tracked', items: [
+        'Stages are gates, not labels: each candidate carries stage + progress-in-stage + velocity (days vs SLA) + outcome, attributed to its channel.',
+        'Drop-off is tracked by channel — leakage is the raw material of channel quality.',
+      ] },
+      { h: 'Stage SLAs → time-to-ready', table: {
+        cols: ['Stage gate', 'SLA'],
+        rows: [['Sourced → Screened', '≤ 5 days'], ['Screened → Onboarded', '≤ 10 days'], ['Onboarding', '≤ 12 days'], ['Sourced-to-ready', '≈ 27 days']],
+      } },
+      { h: 'Lead time — back-scheduled from delivery', table: {
+        cols: ['Milestone', 'When', 'Goal'],
+        rows: [['Recruit-by', 'RD − 42d (~6 wks)', 'start sourcing'], ['Ready-by', 'RD − 14d', 'fully ready (Readiness SLA, 10 business days)'], ['Requested Delivery', 'RD', 'install / go-live']],
+      } },
+      { h: 'Technicians needed (per project)', table: {
+        cols: ['Project size', 'Techs'],
+        rows: [['≤ 20 floors & 1 building', '1'], ['21-40 floors or 2 buildings', '2'], ['41+ floors', '3']],
+      }, note: '≈ 20 floors / technician-day, so each initial install ≈ 1 site day; portfolio ≈ 18 technician-slots. The rule is a default — the OM can Accept a gap when the crew is enough.' },
+      { h: 'Channel quality → the vendor case', items: [
+        'Judged on cost per ready technician, not per lead.',
+        'Craigslist floods leads but churns ~50% (2 of 4): cheap per lead, expensive per ready tech.',
+        'Recommendation: shift toward the vendor model (Cloud Factory) to scale across regions — gated on standardising the process first (Part 5).',
+      ] },
+    ],
+  },
+  schedule: {
+    part: 'Part 2', title: 'Project Schedule — operating logic',
+    q: 'A portfolio scheduling view; the fields you need; how you flag date changes, show cause, and surface risk at a glance.',
+    groups: [
+      { h: 'The principle', items: [
+        'Manage change, not a static plan: every slip is made visible, attributed to a cause, and auto-converted into risk (re-runs the Readiness SLA clock).',
+        'Timeline primary + a linked table; at-risk projects float to the top.',
+      ] },
+      { h: 'Fields — progressive disclosure', table: {
+        cols: ['Tier', 'Carries'],
+        rows: [['Timeline', '~6 signals per row'], ['Table lens', 'curated, sortable columns'], ['Drawer', 'all 17 provided columns + derived']],
+      } },
+      { h: 'Date changes — two sharp signals', items: [
+        'Acceleration-as-risk: a date pulled earlier compresses the runway and can breach lead time in one move — flagged critical, not "good news."',
+        'Volatility: a date moved ≥3 times is unstable regardless of where it sits now.',
+        'Cause drives the response: construction ahead / behind · client update · site access · internal reschedule.',
+        'Auto-propagation + acknowledge loop: technician + RL confirm; a decline auto-triggers reassignment.',
+      ] },
+    ],
+  },
+  quality: {
+    part: 'Part 3', title: 'Technician Quality — operating logic',
+    q: 'The 3 to 5 metrics for reliability over time; how you display them; the threshold that triggers review or removal.',
+    groups: [
+      { h: 'Five metrics → one weighted composite (1-5)', table: {
+        cols: ['Metric', 'Weight', 'Source'],
+        rows: [['Coverage completeness', '30%', 'Buildots platform'], ['Reliability (no-show)', '25%', 'Regional Lead'], ['On-time arrival', '20%', 'Regional Lead'], ['Upload on-time', '15%', 'Buildots platform'], ['Issue / rework', '10%', 'Regional Lead']],
+      }, note: 'Weighted by consequence, so a strong coverage score cannot offset a no-show.' },
+      { h: 'Threshold ladder', table: {
+        cols: ['Trigger', 'Action'],
+        rows: [['Any no-show (hard gate)', 'Benched'], ['Rolling composite < 3.0', 'Benched'], ['< 2.0 sustained · 2nd no-show · failed review', 'Removed'], ['Clean review', 'back to Active']],
+      }, note: 'Provisional until ≥3 installs — one bad first day should not end someone.' },
+      { h: 'The judgment call', items: [
+        'Attribute before you penalise: a coverage shortfall < 90% may be site-access or a wrong plan, not the technician — attribute cause first.',
+        'Removals roll up into channel quality.',
+      ] },
+    ],
+  },
+  alerts: {
+    part: 'Part 4', title: 'Alerts & Decision Logic — operating logic',
+    q: 'What the system flags automatically; at least five trigger-to-action rules; how you prioritise urgent vs informational.',
+    groups: [
+      { h: 'The framework', items: [
+        'Judged by what it does NOT interrupt you for. Three tiers by time-to-consequence × client-impact.',
+        'Tie-break: anything threatening the Readiness SLA or client data outranks internal efficiency.',
+        'The system watches all 12 signals; attention is curated to the six below.',
+      ] },
+      { h: 'The 6 triggers → action', table: {
+        cols: ['#', 'Tier', 'Trigger', 'Action'],
+        rows: [
+          ['1', '🟠', 'Recruitment window opens, no tech', 'start recruiting / reserve a pool tech'],
+          ['2', '🔴', 'Readiness gap — inside the 10-day buffer, no Ready tech', 'redeploy a returning tech / escalate'],
+          ['3', '🔴', 'Acceleration breaches lead time', 'recompute runway; cover or escalate'],
+          ['4', '🔴', 'No-show / cancel at deploy', 'pool reassignment; auto-bench'],
+          ['5', '🟠', 'Coverage shortfall < 90%', 'attribute cause before penalising'],
+          ['6', '🟢', 'Routine date change (no breach)', 'auto-propagate + acknowledge'],
+        ],
+      } },
+      { h: 'Routing', table: {
+        cols: ['Tier', 'How it reaches you'],
+        rows: [['🔴 Critical', 'Slack + email now; pins to Act Now'], ['🟠 Action', 'This Week queue + daily digest'], ['🟢 Info', 'digest only — nobody pinged']],
+      } },
+    ],
+  },
+  process: {
+    part: 'Part 5', title: 'Process & Optimisation — operating logic',
+    q: 'Map the process; find bottlenecks; implement improvements; keep it documented; the tool you would use.',
+    groups: [
+      { h: 'The tool — one source of truth', items: [
+        'Jira runs the 24-step workflow (steps to statuses), the board, and native automation (date propagation + the Part 4 alerts).',
+        'Confluence holds the SOPs — the documented, repeatable workflow.',
+        'Claude Code MCP + Skills are the intelligence layer we grow into: natural-language ops, auto-summaries, a prep-technician Skill. Echoes Buildots\' own Salesforce to Jira move.',
+      ] },
+      { h: 'The map as a live diagnostic', items: [
+        'The 24-step / 7-phase template as a live aggregate lens: where projects clump right now is the live bottleneck (data-driven).',
+        'Two pathways: new-hire (full 24 steps, ~6-wk lead) vs returning (skips Training + PPE).',
+      ] },
+      { h: 'Improvement levers — process now vs automation later', table: {
+        cols: ['Lever we control now', 'Where automation could help'],
+        rows: [
+          ['Parallelise the readiness gates + write a Confluence SOP', 'a prep-technician Skill fires them from one action'],
+          ['Cluster work per region (one-vendor-per-region) so reuse is possible', 'the board surfaces same-region availability'],
+          ['Unify on Jira + SOPs in Confluence', 'native Jira automation carries propagation + alerts'],
+        ],
+      }, note: 'Sequence: standardise → cluster for reuse → automate → unlock the vendor scale-up. Automation is framed honestly — real near-term wins vs a layer we grow into.' },
+    ],
+  },
+  mission: {
+    part: 'Part 6', title: 'Dashboard — operating logic',
+    q: 'The one screen you open every morning; a separate summary for your manager; what is different between them.',
+    groups: [
+      { h: 'One concept, two dashboards', items: [
+        'Two dashboards, one per persona, sharing one north-star and separated by altitude.',
+        'North-star on both: on-time delivery to the client — the stated #1 success metric (100% SLA adherence, zero dropped). Readiness SLA is the internal leading indicator behind it.',
+      ] },
+      { h: 'The difference', table: {
+        cols: ['', 'OM view', 'Manager view'],
+        rows: [
+          ['Answers', 'what do I act on today?', 'healthy and on trajectory?'],
+          ['Health', 'full, drillable', 'rollups + exceptions'],
+          ['Action cockpit', 'yes', 'no — never task-level'],
+          ['Cadence', 'live, all day', 'a weekly glance'],
+        ],
+      } },
+      { h: 'A deliberate restraint', items: [
+        'Unified language and cut-manual-admin are not tiles: no honest log can measure them, so the design itself (Jira + standardisation) delivers them.',
+      ] },
+    ],
+  },
+};
+
+export default function OperatingLogic({ part }) {
+  const d = CONTENT[part];
+  const [open, setOpen] = useState(false);
+  if (!d) return null;
+  return (
+    <>
+      <button className="btn btn-sm oplogic-btn" onClick={() => setOpen(true)} title="The reasoning, rules, and thresholds behind this screen — ready for questions">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 6h11M9 12h11M9 18h11" strokeLinecap="round" />
+          <circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none" />
+        </svg>
+        Operating logic
+      </button>
+      {open && (
+        <Modal title={d.title} onClose={() => setOpen(false)} footer={<button className="btn-text" onClick={() => setOpen(false)}>Close</button>}>
+          <div className="oplogic">
+            <div className="oplogic-q"><span className="lp-tag">{d.part}</span><span>{d.q}</span></div>
+            {d.groups.map((g, i) => (
+              <div key={i} className="oplogic-group">
+                <div className="oplogic-h">{g.h}</div>
+                {g.table ? (
+                  <table className="oplogic-table">
+                    <thead><tr>{g.table.cols.map((c, ci) => <th key={ci}>{c}</th>)}</tr></thead>
+                    <tbody>{g.table.rows.map((r, ri) => <tr key={ri}>{r.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>)}</tbody>
+                  </table>
+                ) : (
+                  <ul>{g.items.map((it, j) => <li key={j}>{it}</li>)}</ul>
+                )}
+                {g.note && <div className="oplogic-note">{g.note}</div>}
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}

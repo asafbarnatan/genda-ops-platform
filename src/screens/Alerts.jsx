@@ -3,7 +3,7 @@ import { useStore } from '../data/store.jsx';
 import { deriveAlerts } from '../data/derive';
 import { Icon } from '../components/bits.jsx';
 import { EntityModal } from '../components/Modal.jsx';
-import LogicPane from '../components/LogicPane.jsx';
+import OperatingLogic from '../components/OperatingLogic.jsx';
 
 const TIERS = [
   { tier: 'critical', dot: 'red', label: 'Critical — Act Now', window: '~24 to 48h', meaning: 'Hits a client outcome or breaches the Readiness SLA', test: '"Does a client feel this if I don\'t move today?"' },
@@ -30,10 +30,8 @@ export default function Alerts() {
     <div className="page">
       <div className="page-head">
         <div><h1 className="page-title">Alerts & Decision Logic</h1><div className="page-sub">What the system flags automatically, how urgent each one is, and what to do — updated live as the data changes.</div></div>
-        <button className="btn btn-primary" onClick={() => setModal({ tier: 'action', family: 'Schedule', owner: 'OM' })}><Icon.plus /> Add event</button>
+        <div className="row"><OperatingLogic part="alerts" /><button className="btn btn-primary" onClick={() => setModal({ tier: 'action', family: 'Schedule', owner: 'OM' })}><Icon.plus /> Add event</button></div>
       </div>
-
-      <LogicPane part="alerts" />
 
       {/* Tie-break as a table (the prioritisation framework) */}
       <div className="card" style={{ marginBottom: 20 }}>

@@ -7,7 +7,7 @@ import {
 import { STEPS, PHASES, BOUNDARY_STEP, TODAY } from '../data/seed';
 import { StatusPill, Icon, FilterBar } from '../components/bits.jsx';
 import { EntityModal } from '../components/Modal.jsx';
-import LogicPane from '../components/LogicPane.jsx';
+import OperatingLogic from '../components/OperatingLogic.jsx';
 
 const REGIONS = ['Texas', 'Southeast', 'West'];
 const CAUSES = ['Construction ahead', 'Construction behind', 'Client update', 'Site access', 'Internal reschedule'];
@@ -302,12 +302,11 @@ export default function Schedule() {
       <div className="page-head">
         <div><h1 className="page-title">Project Schedule</h1><div className="page-sub">Managing change: dates shift, cause is captured, risk recomputes, at-risk floats to the top</div></div>
         <div className="row">
+          <OperatingLogic part="schedule" />
           <div className="seg"><button className={view === 'timeline' ? 'active' : ''} onClick={() => setView('timeline')}>Timeline</button><button className={view === 'table' ? 'active' : ''} onClick={() => setView('table')}>Table</button></div>
           <button className="btn btn-primary" onClick={() => setModal({ region: 'Southeast', type: 'Residential', assignmentType: 'New-hire', buildings: 1, startStep: stepOptions[0] })}><Icon.plus /> Project</button>
         </div>
       </div>
-
-      <LogicPane part="schedule" />
 
       <FilterBar filters={filters} values={f} onChange={(k, v) => setF((s) => ({ ...s, [k]: v }))} right={<span className="small muted">{rows.length} projects · click any project to manage it</span>} />
 

@@ -159,9 +159,11 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
   const bn = topBottleneck(projects);
   const totalDeploys = aps.reduce((s, p) => s + (p.assignedTechs?.length || 0), 0);
   const returningDeploys = aps.filter((p) => p.assignmentType === 'Returning').reduce((s, p) => s + (p.assignedTechs?.length || 0), 0);
+  // total unfilled staffing demand (needed − assigned), excluding gaps the OM has accepted
+  const missingTechs = aps.reduce((s, p) => s + (p.staffingOk ? 0 : Math.max(0, techniciansNeeded(p) - (p.assignedTechs?.length || 0))), 0);
 
   return {
-    // Band 1 — Roee's north-star
+    // Band 1 — the north-star
     customerSlaAdherence: customerAdherence,
     readinessSlaAdherence: adherence,
     droppedOpportunities: overdue.length,
@@ -177,6 +179,7 @@ export function missionTiles(projects, technicians, candidates, today = TODAY) {
     alertInfo: tierCount('info'),
     topBottleneck: bn.phase,
     bottleneckCount: bn.count,
+    missingTechs,
     // Quick overview
     projects: aps.length,
     technicians: technicians.length,

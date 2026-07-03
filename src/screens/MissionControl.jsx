@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
-import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite, projectsByPhase } from '../data/derive';
+import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite, projectsByPhase, techniciansNeeded } from '../data/derive';
 import { Tile } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
-import LogicPane from '../components/LogicPane.jsx';
+import OperatingLogic from '../components/OperatingLogic.jsx';
 
 function TileDetail({ d, onGo, onClose }) {
   return (
@@ -66,6 +66,12 @@ export default function MissionControl() {
   const atRiskList = aps.filter((p) => ['atrisk', 'critical'].includes(projectStatus(p)));
   const flaggedTechs = technicians.filter((t) => t.pool !== 'Active');
   const bnProjects = (projectsByPhase(projects)[m.topBottleneck]) || [];
+  const gapProjects = aps.map((p) => ({ p, miss: Math.max(0, techniciansNeeded(p) - (p.assignedTechs?.length || 0)) })).filter((x) => x.miss > 0 && !x.p.staffingOk);
+  // Portfolio-health RAG buckets — mutually exclusive, mirror the Schedule status legend.
+  const onTrackCount = aps.filter((p) => projectStatus(p) === 'ontrack').length;
+  const atRiskOnly = aps.filter((p) => projectStatus(p) === 'atrisk').length;
+  const criticalCount = aps.filter((p) => projectStatus(p) === 'critical').length;
+  const naCount = aps.length - onTrackCount - atRiskOnly - criticalCount;
   const returningProjects = aps.filter((p) => p.assignmentType === 'Returning');
   const goDetail = (screen, focus = null) => { navigate(screen, focus); setDetail(null); };
 
@@ -121,7 +127,12 @@ export default function MissionControl() {
     },
     alertCritical: { title: 'Alerts · critical', value: m.alertCritical, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Alerts that hit a client outcome or breach the Readiness SLA.', items: alerts.filter((a) => a.tier === 'critical').map((a) => ({ name: a.trigger, note: a.subject, bad: true })) },
     alertAction: { title: 'Alerts · action', value: m.alertAction, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Real issues you own the timing on — handle this week.', items: alerts.filter((a) => a.tier === 'action').map((a) => ({ name: a.trigger, note: a.subject, warn: true })) },
-    alertInfo: { title: 'Alerts · info', value: m.alertInfo, link: { screen: 'alerts', label: 'Open Alerts' }, formula: 'Awareness only — no action needed.', items: alerts.filter((a) => a.tier === 'info').map((a) => ({ name: a.trigger, note: a.subject, bad: false })) },
+    missingTechs: {
+      title: 'Missing technicians', value: m.missingTechs, link: { screen: 'pipeline', label: 'Open the Pipeline' },
+      why: 'The unfilled staffing demand across the portfolio — how many more technicians the active projects still need. This is exactly what the recruitment pipeline and the vendor pilot exist to close.',
+      formula: `Sum of (technicians needed − assigned) across active projects, excluding gaps the OM has accepted. Total = ${m.missingTechs}.`,
+      items: gapProjects.length ? gapProjects.map((x) => ({ name: x.p.name, note: `${x.miss} missing · ${projectStatus(x.p) === 'critical' ? 'inside SLA' : 'on plan'}`, bad: projectStatus(x.p) === 'critical', warn: projectStatus(x.p) === 'atrisk', focus: x.p.id, goScreen: 'pipeline' })) : [{ name: 'None', note: 'every project is staffed or the gap is accepted', bad: false }],
+    },
   };
 
   return (
@@ -131,13 +142,14 @@ export default function MissionControl() {
           <h1 className="page-title">Mission Control</h1>
           <div className="page-sub">{isOM ? 'Your daily ops view — what needs action today' : 'Manager summary — is the operation healthy and on trajectory?'}</div>
         </div>
-        <div className="seg">
-          <button className={isOM ? 'active' : ''} onClick={() => setPersona('om')}>My view (OM)</button>
-          <button className={!isOM ? 'active' : ''} onClick={() => setPersona('manager')}>Manager view</button>
+        <div className="row" style={{ alignItems: 'center' }}>
+          <OperatingLogic part="mission" />
+          <div className="seg">
+            <button className={isOM ? 'active' : ''} onClick={() => setPersona('om')}>My view (OM)</button>
+            <button className={!isOM ? 'active' : ''} onClick={() => setPersona('manager')}>Manager view</button>
+          </div>
         </div>
       </div>
-
-      <LogicPane part="mission" />
 
       <div className="stat-strip" style={{ marginBottom: 16 }}>
         <Tile label="Active projects" value={m.projects} sub="Genda Pro installs across the portfolio" />
@@ -173,7 +185,8 @@ export default function MissionControl() {
           hint="The process phase with the most projects right now — where the queue actually is. Click for the list." />
         <Tile accent="red" label="Alerts · critical" value={m.alertCritical} sub="act now, ~24-48h" onOpen={() => setDetail('alertCritical')} hint="Alerts that hit a client outcome or breach the Readiness SLA. Click to see them." />
         <Tile accent="amber" label="Alerts · action" value={m.alertAction} sub="handle this week" onOpen={() => setDetail('alertAction')} hint="Real issues you own the timing on. Click to see them." />
-        <Tile accent="green" label="Alerts · info" value={m.alertInfo} sub="monitor only" onOpen={() => setDetail('alertInfo')} hint="Awareness only. Click to see them." />
+        <Tile accent={m.missingTechs > 0 ? 'amber' : 'green'} label="Missing technicians" value={m.missingTechs} sub="unfilled staffing demand · from Staffing by project" onOpen={() => setDetail('missingTechs')}
+          hint="How many more technicians the active projects still need (needed − assigned), excluding gaps you've accepted. Click for the per-project breakdown." />
       </div>
 
       {isOM ? (
@@ -217,11 +230,12 @@ export default function MissionControl() {
             <div className="card-head"><h3>Portfolio health</h3></div>
             <div className="card-pad">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div className="kv"><span className="dot-s green" /> On track &nbsp;<b className="mono-num">{m.projects - m.atRisk}</b></div>
-                <div className="kv"><span className="dot-s amber" /> At risk / critical &nbsp;<b className="mono-num">{m.atRisk}</b></div>
-                <div className="kv"><span className="dot-s red" /> Dropped (overdue) &nbsp;<b className="mono-num">{m.droppedOpportunities}</b></div>
+                <div className="kv"><span className="dot-s green" /> On track &nbsp;<b className="mono-num">{onTrackCount}</b></div>
+                <div className="kv"><span className="dot-s amber" /> At risk &nbsp;<b className="mono-num">{atRiskOnly}</b></div>
+                <div className="kv"><span className="dot-s red" /> Critical (dropped / overdue) &nbsp;<b className="mono-num">{criticalCount}</b></div>
+                {naCount > 0 && <div className="kv"><span className="dot-s grey" /> Not assessable &nbsp;<b className="mono-num">{naCount}</b></div>}
                 <hr className="sep" style={{ margin: '6px 0' }} />
-                <div className="small muted">Manager view stays at altitude: rollups + trajectory, no task-level queue. Same north-star KPI as the OM view.</div>
+                <div className="small muted">Same three statuses as the Schedule tab. On track + At risk + Critical{naCount > 0 ? ' + N/A' : ''} = {m.projects} active projects.</div>
               </div>
             </div>
           </div>

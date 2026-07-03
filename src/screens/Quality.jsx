@@ -4,7 +4,7 @@ import { useStore } from '../data/store.jsx';
 import { qualityComposite, suggestedPool, qualityTrend, metricTrend, activeTechs, METRIC_DEFS, assignedNames } from '../data/derive';
 import { PoolPill, FilterBar } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
-import LogicPane from '../components/LogicPane.jsx';
+import OperatingLogic from '../components/OperatingLogic.jsx';
 
 const LINE_COLORS = ['#5B4FE9', '#3FB37F', '#E6B23C', '#8B7FE8', '#E5533D', '#2F6DB5'];
 const METRIC_LINE = { coverage: '#5B4FE9', reliability: '#3FB37F', ontime: '#E6B23C', upload: '#8B7FE8', issues: '#E5533D' };
@@ -105,9 +105,8 @@ export default function Quality() {
     <div className="page">
       <div className="page-head">
         <div><h1 className="page-title">Technician Quality</h1><div className="page-sub">Reliability over time · a transparent weighted composite · RL feedback closes the loop</div></div>
+        <OperatingLogic part="quality" />
       </div>
-
-      <LogicPane part="quality" />
 
       <FilterBar filters={filters} values={f} onChange={(k, v) => setF((s) => ({ ...s, [k]: v }))} />
 

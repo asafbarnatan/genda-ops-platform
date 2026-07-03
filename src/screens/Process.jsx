@@ -1,7 +1,7 @@
 import { useStore } from '../data/store.jsx';
 import { STEPS } from '../data/seed';
 import { projectsAtStep, topBottleneck, activeProjects, effectiveStep } from '../data/derive';
-import LogicPane from '../components/LogicPane.jsx';
+import OperatingLogic from '../components/OperatingLogic.jsx';
 
 const RETURN_SKIP_PHASES = new Set(['Buildots Training', 'Equipment Setup']);
 const phaseSteps = (phase) => STEPS.filter((s) => s.phase === phase);
@@ -66,9 +66,8 @@ export default function Process() {
     <div className="page">
       <div className="page-head">
         <div><h1 className="page-title">Process & Optimisation</h1><div className="page-sub">The 24-step template as a live workflow · drag a project between steps to advance it — the change flows to the Schedule, timeline, table, and the project</div></div>
+        <OperatingLogic part="process" />
       </div>
-
-      <LogicPane part="process" />
 
       <div className="row wrap" style={{ gap: 12, marginBottom: 16 }}>
         <div className="card card-pad" style={{ flex: '1 1 340px' }}>

@@ -4,7 +4,7 @@ import { funnelLiquidity, channelScorecard, qualityComposite, techniciansNeeded,
 import { TODAY } from '../data/seed';
 import { EntityModal, Modal } from '../components/Modal.jsx';
 import { Icon, PoolPill, FilterBar } from '../components/bits.jsx';
-import LogicPane from '../components/LogicPane.jsx';
+import OperatingLogic from '../components/OperatingLogic.jsx';
 
 const CHANNELS = ['Craigslist', 'Facebook', 'LinkedIn', 'Other', 'Vendor - Cloud Factory'];
 const REGIONS = ['Texas', 'Southeast', 'West'];
@@ -112,12 +112,11 @@ export default function Pipeline() {
       <div className="page-head">
         <div><h1 className="page-title">Recruitment Pipeline</h1><div className="page-sub">Sourced → Screened → Onboarded → Deployed · drag a card to advance it · one dataset, filter to compare channels</div></div>
         <div className="row">
+          <OperatingLogic part="pipeline" />
           <button className="btn" onClick={() => openCand({ stage: 'Sourced', channel: 'Craigslist', region: 'Southeast', candidateScore: 3, daysInStage: 0 })}><Icon.plus /> Candidate</button>
           <button className="btn btn-primary" onClick={() => openTech({ pool: 'Active', channel: 'Craigslist', region: 'Southeast', lead: 'Gil', candidateScore: 3 })}><Icon.plus /> Technician</button>
         </div>
       </div>
-
-      <LogicPane part="pipeline" />
 
       <FilterBar filters={[{ key: 'channel', label: 'Channel', options: CHANNELS }, { key: 'region', label: 'Region', options: REGIONS }]} values={f} onChange={(k, v) => setF((s) => ({ ...s, [k]: v }))} />
 
@@ -205,9 +204,19 @@ export default function Pipeline() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="total-row">
+                  <td><b>Total</b> <span className="small muted">{staffingRows.length} projects</span></td>
+                  <td className="num"><b>{totalNeeded}</b></td>
+                  <td className="num"><b>{totalAssigned}</b></td>
+                  <td className="num">{totalGap > 0 ? <b style={{ color: '#b23524' }}>{totalGap}</b> : <b>0</b>}</td>
+                  <td></td>
+                  <td className="small muted">{totalGap} open gap{totalGap === 1 ? '' : 's'}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
-          <div className="table-foot"><span><b>{totalNeeded}</b> slots of demand · {totalAssigned} assigned</span><span className="muted">{totalGap} open gap{totalGap === 1 ? '' : 's'} · Needed = floors/buildings heuristic</span></div>
+          <div className="table-foot"><span className="muted">Needed = floors/buildings heuristic (≤20 &amp; 1 bldg → 1 · 21-40 or 2 bldgs → 2 · 41+ → 3); the OM can Accept a gap when the crew is enough.</span></div>
         </div>
 
         {/* Channel scorecard — click a channel for its technicians */}
