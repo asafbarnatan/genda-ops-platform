@@ -9,7 +9,7 @@ import { StatusPill } from './bits.jsx';
 // stepDisplayStatus(p, i) (the SAME derivation the drawer stepper + legend use). Step 1 =
 // recruit-by (delivery − 6wk); prep closes on the Ready-by marker (delivery − 10 business days);
 // First Installation (step 17) sits on the Requested-delivery ◆. Click a square to set its status.
-const NAME_W = 98, STATUS_W = 104, LABEL_W = NAME_W + STATUS_W, ROW_H = 42, DAY = 86400000;
+const NAME_W = 90, STATUS_W = 132, LABEL_W = NAME_W + STATUS_W, ROW_H = 42, DAY = 86400000;
 const RANGES = [{ k: '1W', d: 7 }, { k: '2W', d: 14 }, { k: '1M', d: 30 }, { k: '3M', d: 90 }, { k: '6M', d: 180 }, { k: '1Y', d: 365 }, { k: 'All', d: null }];
 const STATUS_COLOR = { done: 'var(--bd-green)', doing: 'var(--bd-amber-s)', behind: 'var(--bd-red)', skipped: 'var(--bd-ink-3)', todo: '#EBECEE' };
 const STATUS_LABEL = { done: 'Done', doing: 'In progress', behind: 'Behind', skipped: 'Skipped (returning path)', todo: 'Upcoming' };
@@ -84,7 +84,10 @@ export default function GanttTimeline({ projects, onOpen, onOpenStageGuide, onSe
           <div className="gantt-axis" style={{ width: LABEL_W + contentW }}>
             <div className="gantt-frozen gantt-frozen-head" style={{ width: LABEL_W }}>
               <div className="gah-cell" style={{ width: NAME_W }}>Project</div>
-              <div className="gah-cell gah-status" style={{ width: STATUS_W }}>Status · stage</div>
+              <div className="gah-cell gah-status" style={{ width: STATUS_W }}>
+                <span className="pill grey gah-lab">Project status</span>
+                <span className="gah-sub">stage</span>
+              </div>
             </div>
             {ticks.map((t, i) => <span key={i} className="gtick" style={{ left: LABEL_W + t.x }}>{t.label}</span>)}
           </div>

@@ -413,7 +413,9 @@ select.cell-edit { -webkit-appearance: none; appearance: none; padding-right: 22
 .gantt-frozen { position: sticky; left: 0; z-index: 3; display: flex; height: 100%; background: var(--bd-surface); border-right: 1px solid var(--bd-border); box-sizing: border-box; }
 .gantt-frozen-head { z-index: 4; background: var(--bd-surface-alt); }
 .gah-cell { display: flex; align-items: center; height: 100%; padding: 0 10px; box-sizing: border-box; font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--bd-ink-3); }
-.gah-status { border-left: 1px solid var(--bd-border); }
+.gah-status { border-left: 1px solid var(--bd-border); gap: 6px; text-transform: none; letter-spacing: normal; }
+.gah-lab { font-size: 8px; font-weight: 700; padding: 1px 7px; }
+.gah-sub { font-size: 9px; font-weight: 700; color: var(--bd-ink-3); text-transform: uppercase; letter-spacing: 0.05em; }
 .gantt-name { display: flex; align-items: center; padding: 0 8px 0 10px; box-sizing: border-box; cursor: pointer; }
 .gantt-name:hover { background: #FBFAF6; }
 .gantt-status { display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 0 8px; box-sizing: border-box; border-left: 1px solid #F1F1F1; cursor: pointer; }
