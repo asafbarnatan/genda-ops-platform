@@ -37,12 +37,20 @@ const CONTENT = {
   },
   schedule: {
     part: 'Part 2', title: 'Project Schedule — operating logic',
-    q: 'A portfolio scheduling view; the fields you need; how you flag date changes, show cause, and surface risk at a glance.',
+    q: 'A portfolio scheduling view: the fields you need, how you read each project against one template, flag date changes, show cause, and surface risk at a glance.',
     groups: [
       { h: 'The principle', items: [
-        'Manage change, not a static plan: every slip is made visible, attributed to a cause, and auto-converted into risk (re-runs the Readiness SLA clock).',
+        'Manage change, not a static plan: every slip is made visible, attributed to a cause, and auto-converted into risk (it re-runs the Readiness SLA clock).',
         'Timeline primary + a linked table; at-risk projects float to the top.',
       ] },
+      { h: 'Reading the timeline — one template, three fixed milestones', table: {
+        cols: ['Marker', 'When', 'What it means'],
+        rows: [
+          ['Step 1 · recruit-by', 'delivery − 6 weeks', 'the clock starts — begin recruiting or reserve a pool tech'],
+          ['Ready-by (amber)', 'delivery − 10 business days', 'office prep done, technician ready — the Readiness SLA buffer'],
+          ['First Installation ◆', 'Requested delivery', 'the client promise; every square is scaled to land here'],
+        ],
+      }, note: 'The same 24-step template sits on every row, so positions compare directly. Colour is live from the process — a move on the Process board or a ✓/✕ in the project drawer recolours the square here (one source of truth). A square turns red once it is past its planned date and still open: that gap is exactly how far behind the project is versus Today.' },
       { h: 'Fields — glanceable first, full detail on click', table: {
         cols: ['View', 'Shows', 'Good for'],
         rows: [
@@ -50,7 +58,7 @@ const CONTENT = {
           ['Table', 'curated, sortable columns', 'comparing and sorting'],
           ['Drawer (click a project)', 'all 17 provided fields + derived', 'the full record'],
         ],
-      }, note: 'The value: the main view stays readable — no screen is dumped with 17 columns — and the full dataset is always one click away. Depth without clutter.' },
+      }, note: 'Depth without clutter: the main view stays readable and the full dataset is one click away. Owners are people, not steps — the Opportunity Owner is the Salesforce sales rep who owns the client, the Regional Lead owns on-site quality, and the technician runs the install.' },
       { h: 'Date changes — two sharp signals', items: [
         'Acceleration-as-risk: a date pulled earlier compresses the runway and can breach lead time in one move — flagged critical, not "good news."',
         'Volatility: a date moved ≥3 times is unstable regardless of where it sits now.',

@@ -286,7 +286,10 @@ hr.sep { border: none; border-top: 1px solid var(--bd-border); margin: var(--s5)
 .insight-body .k { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1f7a54; }
 
 /* ---- timeline legend tile ---- */
-.legend-tile { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; padding: 11px 16px; background: var(--bd-surface-alt); border: 1px solid var(--bd-border); border-radius: var(--r-card); margin-bottom: 12px; }
+.legend-tile { display: flex; flex-direction: column; gap: 8px; padding: 11px 16px; background: var(--bd-surface-alt); border: 1px solid var(--bd-border); border-radius: var(--r-card); margin-bottom: 12px; }
+.legend-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.legend-row + .legend-row { border-top: 1px solid var(--bd-border); padding-top: 8px; }
+.legend-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--bd-ink-3); min-width: 150px; }
 .legend-tile .lk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--bd-ink-2); }
 
 /* ---- inline-editable table cells ---- */

@@ -293,19 +293,24 @@ export default function Schedule() {
       {view === 'timeline' ? (
         <>
           <div className="legend-tile">
-            <span className="micro" style={{ letterSpacing: '0.05em' }}>Stage</span>
-            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-green)' }} /> Done</span>
-            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-amber-s)' }} /> In progress</span>
-            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-red)' }} /> Behind (past its planned date)</span>
-            <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-ink-3)' }} /> Skipped (returning)</span>
-            <span className="lk"><span className="gswatch" style={{ background: '#EBECEE', border: '1px solid var(--bd-border)' }} /> Upcoming</span>
-            <span className="lk"><span className="grd-ready-legend" /> Ready-by (Readiness SLA · ~10 days early)</span>
-            <span className="lk"><span className="grd-legend" /> Requested delivery (First Installation due)</span>
-            <span className="lk"><span className="dot-s grey" /> Quarterly visit</span>
-            <span className="lk"><span style={{ display: 'inline-block', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '6px solid var(--bd-ink)', verticalAlign: 'middle' }} /> Current stage</span>
-            <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-ink-3)', verticalAlign: 'middle' }} /> Today</span>
-            <span style={{ flexBasis: '100%', height: 0 }} />
-            <span className="small muted">Each square is one of the 24 process steps on a real time axis, running to the project's end date. Step 1 starts at recruit-by (6 weeks out), the office prep closes on the amber Ready-by marker (10 business days early), and First Installation sits on the ◆ Requested-delivery marker — the same template for every project. A square goes red once it is past its planned date and still open, showing how far behind the project is versus Today. Colours are live from the process: a move on the Process board or a ✓/✕ in the drawer recolours the square here.</span>
+            <div className="legend-row">
+              <span className="legend-label">Square = stage status</span>
+              <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-green)' }} /> Done</span>
+              <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-amber-s)' }} /> In progress</span>
+              <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-red)' }} /> Behind</span>
+              <span className="lk"><span className="gswatch" style={{ background: 'var(--bd-ink-3)' }} /> Skipped (returning)</span>
+              <span className="lk"><span className="gswatch" style={{ background: '#EBECEE', border: '1px solid var(--bd-border)' }} /> Upcoming</span>
+            </div>
+            <div className="legend-row">
+              <span className="legend-label">Markers</span>
+              <span className="lk"><span className="grd-ready-legend" /> Ready-by · SLA (~10 days early)</span>
+              <span className="lk"><span className="grd-legend" /> Requested delivery (First Installation)</span>
+              <span className="lk"><span style={{ display: 'inline-block', width: 2, height: 12, background: 'var(--bd-ink-3)', verticalAlign: 'middle' }} /> Today</span>
+              <span className="lk"><span style={{ display: 'inline-block', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '6px solid var(--bd-ink)', verticalAlign: 'middle' }} /> Current stage</span>
+              <span className="lk"><span className="dot-s grey" /> Quarterly visit</span>
+              <span className="spacer" />
+              <span className="small muted">Hover a square for its definition and date · the reading guide lives in Operating logic</span>
+            </div>
           </div>
           <GanttTimeline projects={sorted} onOpen={(id) => setDrawer(id)} onOpenStageGuide={() => setStageGuide(true)} />
           {stageGuide && (
