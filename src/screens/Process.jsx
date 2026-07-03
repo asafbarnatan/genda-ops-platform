@@ -29,11 +29,11 @@ function PhaseBlock({ phase, atStep, onChip, onMove, small, half, bnPhase }) {
           const stepSkip = partialSkip && RETURN_SKIP.has(s.i);
           return (
             <div key={s.i} className={`wf2-step ${isBottleneck && ps.length ? 'hot' : ''}`}
-              title={s.info || ''}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { const id = e.dataTransfer.getData('pid'); if (id) onMove(id, s.i); }}>
-              <div className="st-head"><span className="small muted mono-num">{s.i + 1}</span><span>{s.name}</span>{stepSkip && <span className="pill indigo" style={{ fontSize: 9 }} title="Skipped on the returning-tech path">↩ returning skip</span>}{ps.length > 0 && <span className="c">{ps.length}</span>}</div>
-              {ps.length > 0 && <div className="wf2-chips">{ps.map((p) => <span key={p.id} className="wf2-chip" draggable onDragStart={(e) => e.dataTransfer.setData('pid', p.id)} onClick={() => onChip(p.id)} title="drag to another step, or click to open">{p.name}</span>)}</div>}
+              <div className="st-head"><span className="small muted mono-num">{s.i + 1}</span><span>{s.name}</span>{stepSkip && <span className="pill indigo" style={{ fontSize: 9 }}>skipped on returning path</span>}{ps.length > 0 && <span className="c">{ps.length}</span>}</div>
+              {ps.length > 0 && <div className="wf2-chips">{ps.map((p) => <span key={p.id} className="wf2-chip" draggable onDragStart={(e) => e.dataTransfer.setData('pid', p.id)} onClick={() => onChip(p.id)}>{p.name}</span>)}</div>}
+              {s.info && <div className="step-tip">{s.info}</div>}
             </div>
           );
         })}
@@ -43,7 +43,7 @@ function PhaseBlock({ phase, atStep, onChip, onMove, small, half, bnPhase }) {
 }
 
 const IMPROVEMENTS = [
-  { problem: 'The readiness spine (OSHA10 → Training → Kit → PPE) runs in sequence, which stretches the new-hire lead time to about six weeks.', fix: 'Run the independent gates in parallel and document the flow as a Confluence SOP.', auto: 'A "prep technician" Skill fires the parallel gates the moment the contract is signed.' },
+  { problem: 'The new-hire prep gates (OSHA10 → Training → Kit → PPE) run in sequence, which stretches the new-hire lead time to about six weeks.', fix: 'Run the independent gates in parallel and document the flow as a Confluence SOP.', auto: 'A "prep technician" Skill fires the parallel gates the moment the contract is signed.' },
   { problem: 'Every project is staffed from scratch on a ~6-week new-hire lead — no reuse of already-trained technicians.', fix: 'Default returning technicians to the fast path; cluster work per region (one-vendor-per-region) so reuse is possible.', auto: 'The board surfaces same-region technician availability as soon as a project needs staffing.' },
   { problem: 'The operation runs on disconnected, manual tools — dates go stale and feedback loops leak.', fix: 'One source of truth in Jira, with SOPs documented in Confluence.', auto: 'Jira automation handles propagation and alerts; Claude Code adds natural-language ops and auto-summaries.' },
 ];
@@ -128,12 +128,6 @@ export default function Process() {
             <div className="insight-body"><div className="k">↻ Proposed fix</div><div style={{ marginTop: 5, fontSize: 13 }}>{b.fix}</div><div className="small muted" style={{ marginTop: 8 }}><span className="pill indigo">⚙ automation</span> {b.auto}</div></div>
           </div>
         ))}
-      </div>
-
-      <div className="card card-pad" style={{ marginTop: 16 }}>
-        <div className="micro" style={{ marginBottom: 6 }}>The sequence (the punchline)</div>
-        <div style={{ fontSize: 15, fontWeight: 600 }}>Standardize → cluster / reuse → automate → unlock the vendor scale-up.</div>
-        <div className="small muted" style={{ marginTop: 6 }}>Part 5 is the gate Part 1's vendor recommendation depends on: you cannot hand a process to a vendor, or automate it, until it is written down and stable. Tool recommendation: Jira + Confluence + Claude Code.</div>
       </div>
     </div>
   );

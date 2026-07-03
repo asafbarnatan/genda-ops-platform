@@ -156,7 +156,7 @@ export default function MissionControl() {
         <Tile label="Technicians" value={m.technicians} sub={`${m.techActive} active · ${m.techBenched} benched · ${m.techRemoved} removed`} />
         <Tile label="Regions" value={m.regions} sub="Texas · Southeast · West" />
         <Tile label="Deployments" value={m.deployments} sub="active tech-to-project assignments" />
-        <Tile label="Pipeline" value={m.candidates} sub="Cloud Factory vendor pilot" />
+        <Tile label="Technician pipeline" value={m.candidates} sub="Cloud Factory vendor pilot" />
       </div>
 
       <div className="micro" style={{ margin: '6px 0 8px' }}>North-star KPI — on-time delivery to the client</div>

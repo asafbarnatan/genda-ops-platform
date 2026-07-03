@@ -223,9 +223,13 @@ hr.sep { border: none; border-top: 1px solid var(--bd-border); margin: var(--s5)
 
 /* ---- top-down professional workflow ---- */
 .wf2 { display: flex; flex-direction: column; }
-.wf2-phase { border: 1px solid var(--bd-border); border-radius: var(--r-card); background: var(--bd-surface); box-shadow: var(--sh-card); overflow: hidden; }
+.wf2-phase { border: 1px solid var(--bd-border); border-radius: var(--r-card); background: var(--bd-surface); box-shadow: var(--sh-card); overflow: visible; }
 .wf2-phase.bottleneck { border-color: var(--bd-red); box-shadow: 0 0 0 1px var(--bd-red); }
-.wf2-phead { display: flex; align-items: center; gap: 12px; padding: 11px 15px; background: var(--bd-surface-alt); border-bottom: 1px solid var(--bd-border); }
+.wf2-phead { display: flex; align-items: center; gap: 12px; padding: 11px 15px; background: var(--bd-surface-alt); border-bottom: 1px solid var(--bd-border); border-radius: var(--r-card) var(--r-card) 0 0; }
+/* per-task definition tooltip — black styled popup, matches the Mission Control tile hint */
+.step-tip { display: none; position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 50; background: var(--bd-ink); color: #fff; border-radius: 8px; padding: 9px 12px; font-size: 12px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: normal; box-shadow: var(--sh-modal); pointer-events: none; }
+.step-tip::after { content: ''; position: absolute; top: 100%; left: 22px; border: 6px solid transparent; border-top-color: var(--bd-ink); }
+.wf2-step:hover .step-tip { display: block; }
 .wf2-phead .pn { font-weight: 700; font-size: 14px; }
 .wf2-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; padding: 12px 15px; }
 .wf2-step { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--bd-border); border-radius: 6px; font-size: 12.5px; cursor: pointer; background: #fff; }
@@ -261,7 +265,7 @@ hr.sep { border: none; border-top: 1px solid var(--bd-border); margin: var(--s5)
 .table-scroll .table td, .table-scroll .table th { white-space: nowrap; }
 
 /* ---- process step chips (names inside the step) ---- */
-.wf2-step { flex-direction: column; align-items: stretch; gap: 6px; }
+.wf2-step { flex-direction: column; align-items: stretch; gap: 6px; position: relative; }
 .wf2-step .st-head { display: flex; align-items: center; gap: 8px; }
 .wf2-step .st-head .c { margin-left: auto; font-weight: 700; font-size: 13px; }
 .wf2-chips { display: flex; flex-wrap: wrap; gap: 4px; }
