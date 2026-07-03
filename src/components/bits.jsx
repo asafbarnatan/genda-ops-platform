@@ -27,12 +27,11 @@ export function Legend() {
   );
 }
 
-export function Tile({ label, value, sub, accent, hint, onOpen }) {
+export function Tile({ label, value, accent, hint, onOpen }) {
   return (
     <div className={`tile ${accent ? 'accent ' + accent : ''} ${hint ? 'has-hint' : ''} ${onOpen ? 'clickable-tile' : ''}`} onClick={onOpen}>
       <div className="lbl">{label}{onOpen && <span className="tile-go">↗</span>}</div>
       <div className="val mono-num">{value}</div>
-      {sub && <div className="sub">{sub}</div>}
       {hint && <div className="tile-pop">{hint}</div>}
     </div>
   );

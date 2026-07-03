@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
-import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite, projectsByPhase, techniciansNeeded } from '../data/derive';
+import { missionTiles, deriveAlerts, qualityTrend, activeTechs, activeProjects, projectStatus, qualityComposite, projectsByPhase, techniciansNeeded, assignedNames } from '../data/derive';
 import { Tile } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
 import OperatingLogic from '../components/OperatingLogic.jsx';
@@ -133,6 +133,32 @@ export default function MissionControl() {
       formula: `Sum of (technicians needed − assigned) across active projects, excluding gaps the OM has accepted. Total = ${m.missingTechs}.`,
       items: gapProjects.length ? gapProjects.map((x) => ({ name: x.p.name, note: `${x.miss} missing · ${projectStatus(x.p) === 'critical' ? 'inside SLA' : 'on plan'}`, bad: projectStatus(x.p) === 'critical', warn: projectStatus(x.p) === 'atrisk', focus: x.p.id, goScreen: 'pipeline' })) : [{ name: 'None', note: 'every project is staffed or the gap is accepted', bad: false }],
     },
+    // ---- Overview row (first-row stat tiles) ----
+    projectsAll: {
+      title: 'Active projects', value: m.projects, link: { screen: 'schedule', label: 'Open the Schedule' },
+      formula: `All Genda Pro installs in the active portfolio = ${aps.length}.`,
+      items: aps.map((p) => ({ name: p.name, note: `${p.region} · ${projectStatus(p) === 'critical' ? 'critical' : projectStatus(p) === 'atrisk' ? 'at risk' : 'on track'}`, bad: projectStatus(p) === 'critical', warn: projectStatus(p) === 'atrisk', focus: p.id })),
+    },
+    techniciansAll: {
+      title: 'Technicians', value: m.technicians, link: { screen: 'quality', label: 'Open Quality' },
+      formula: `The full roster: ${m.techActive} active · ${m.techBenched} benched · ${m.techRemoved} removed.`,
+      items: technicians.map((t) => ({ name: t.name, note: `${t.pool} · ${t.region} · Q ${qualityComposite(t.metrics)}`, bad: t.pool === 'Removed', warn: t.pool === 'Benched', focus: t.id, goScreen: 'quality' })),
+    },
+    regionsAll: {
+      title: 'Regions', value: m.regions,
+      formula: 'The regions the active portfolio spans.',
+      items: [...new Set(aps.map((p) => p.region))].map((r) => ({ name: r, note: `${aps.filter((p) => p.region === r).length} projects`, bad: false })),
+    },
+    deploymentsAll: {
+      title: 'Deployments', value: m.deployments, link: { screen: 'schedule', label: 'Open the Schedule' },
+      formula: `Active technician-to-project assignments = ${m.deployments} (one technician can serve several projects).`,
+      items: aps.filter((p) => (p.assignedTechs?.length || 0) > 0).map((p) => ({ name: p.name, note: assignedNames(p, technicians).join(', '), focus: p.id })),
+    },
+    pipelineAll: {
+      title: 'Technician pipeline', value: m.candidates, link: { screen: 'pipeline', label: 'Open the Pipeline' },
+      formula: 'Pre-vetted candidates in the recruitment pipeline (the Cloud Factory vendor pilot).',
+      items: candidates.map((c) => ({ name: c.name, note: `${c.channel} · ${c.stage}`, focus: c.id, goScreen: 'pipeline' })),
+    },
   };
 
   return (
@@ -151,41 +177,42 @@ export default function MissionControl() {
         </div>
       </div>
 
+      <div className="micro" style={{ margin: '6px 0 8px' }}>Overview</div>
       <div className="stat-strip" style={{ marginBottom: 16 }}>
-        <Tile label="Active projects" value={m.projects} sub="Genda Pro installs across the portfolio" />
-        <Tile label="Technicians" value={m.technicians} sub={`${m.techActive} active · ${m.techBenched} benched · ${m.techRemoved} removed`} />
-        <Tile label="Regions" value={m.regions} sub="Texas · Southeast · West" />
-        <Tile label="Deployments" value={m.deployments} sub="active tech-to-project assignments" />
-        <Tile label="Technician pipeline" value={m.candidates} sub="Cloud Factory vendor pilot" />
+        <Tile label="Active projects" value={m.projects} onOpen={() => setDetail('projectsAll')} hint="Genda Pro installs across the active portfolio. Click for the list with status." />
+        <Tile label="Technicians" value={m.technicians} onOpen={() => setDetail('techniciansAll')} hint={`The full roster: ${m.techActive} active · ${m.techBenched} benched · ${m.techRemoved} removed. Click to see each.`} />
+        <Tile label="Regions" value={m.regions} onOpen={() => setDetail('regionsAll')} hint="The regions the portfolio spans: Texas · Southeast · West. Click for project counts." />
+        <Tile label="Deployments" value={m.deployments} onOpen={() => setDetail('deploymentsAll')} hint="Active technician-to-project assignments (one tech can serve several). Click for the breakdown." />
+        <Tile label="Technician pipeline" value={m.candidates} onOpen={() => setDetail('pipelineAll')} hint="Pre-vetted candidates in the recruitment pipeline — the Cloud Factory vendor pilot. Click to see them." />
       </div>
 
       <div className="micro" style={{ margin: '6px 0 8px' }}>North-star KPI — on-time delivery to the client</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 18 }}>
-        <Tile accent={m.customerSlaAdherence >= 95 ? 'green' : 'amber'} label="Customer SLA adherence" value={`${m.customerSlaAdherence}%`} sub="delivered on the date committed to the client" onOpen={() => setDetail('customer')}
+        <Tile accent={m.customerSlaAdherence >= 95 ? 'green' : 'amber'} label="Customer SLA adherence" value={`${m.customerSlaAdherence}%`} onOpen={() => setDetail('customer')}
           hint="The primary KPI: the share of projects delivered on (or before) the date committed to the client. This is the external promise every other metric protects. Click for the breakdown." />
-        <Tile accent={m.droppedOpportunities === 0 ? 'green' : 'red'} label="Dropped opportunities" value={m.droppedOpportunities} sub="missed the delivery date · target 0" onOpen={() => setDetail('dropped')}
+        <Tile accent={m.droppedOpportunities === 0 ? 'green' : 'red'} label="Dropped opportunities" value={m.droppedOpportunities} onOpen={() => setDetail('dropped')}
           hint="Opportunities lost by missing the committed delivery date. Target is zero. Click for the breakdown." />
-        <Tile accent="indigo" label="Readiness SLA (internal)" value={`${m.readinessSlaAdherence}%`} sub="secondary — ready ≥10 days early" onOpen={() => setDetail('readiness')}
+        <Tile accent="indigo" label="Readiness SLA (internal)" value={`${m.readinessSlaAdherence}%`} onOpen={() => setDetail('readiness')}
           hint="Our internal early-warning metric: ready at least 10 business days before delivery. Secondary — the leading indicator that protects the customer SLA. Click for the breakdown." />
       </div>
 
       <div className="micro" style={{ margin: '6px 0 8px' }}>Operational health</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 18 }}>
-        <Tile label="Ready-tech coverage" value={`${m.techActive} ready`} sub="active roster vs near-term demand" onOpen={() => setDetail('readyTech')}
+        <Tile label="Ready-tech coverage" value={`${m.techActive} ready`} onOpen={() => setDetail('readyTech')}
           hint="Active technicians available to deploy. Reused across projects — utilization, not headcount. Click to see who." />
-        <Tile accent="indigo" label="% returning deployments" value={`${m.pctReturning}%`} sub="reuse vs new-hire — the scalability lever" onOpen={() => setDetail('returning')}
+        <Tile accent="indigo" label="% returning deployments" value={`${m.pctReturning}%`} onOpen={() => setDetail('returning')}
           hint="Deployments served by a returning technician instead of a new hire. Higher = faster, cheaper scaling. Click for detail." />
-        <Tile accent={m.atRisk > 2 ? 'amber' : 'green'} label="Projects at risk" value={m.atRisk} sub="amber + red, floated to the top" onOpen={() => setDetail('atRisk')}
+        <Tile accent={m.atRisk > 2 ? 'amber' : 'green'} label="Projects at risk" value={m.atRisk} onOpen={() => setDetail('atRisk')}
           hint="Projects At risk (inside the readiness buffer) or Critical (overdue / no ready tech). Click to see which." />
-        <Tile label="Avg technician quality" value={m.avgQuality} sub={`weighted 1-5 · ${m.flagged} flagged for review`} onOpen={() => setDetail('avgQuality')}
-          hint="Weighted average of the active roster's composite scores. Click to see each technician's contribution." />
+        <Tile label="Avg technician quality" value={m.avgQuality} onOpen={() => setDetail('avgQuality')}
+          hint={`Weighted average of the active roster's composite scores (1-5). ${m.flagged} technicians are flagged for review. Click to see each contribution.`} />
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
-        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>{m.topBottleneck}</span>} sub={`${m.bottleneckCount} projects sit here now`} onOpen={() => setDetail('bottleneck')}
-          hint="The process phase with the most projects right now — where the queue actually is. Click for the list." />
-        <Tile accent="red" label="Alerts · critical" value={m.alertCritical} sub="act now, ~24-48h" onOpen={() => setDetail('alertCritical')} hint="Alerts that hit a client outcome or breach the Readiness SLA. Click to see them." />
-        <Tile accent="amber" label="Alerts · action" value={m.alertAction} sub="handle this week" onOpen={() => setDetail('alertAction')} hint="Real issues you own the timing on. Click to see them." />
-        <Tile accent={m.missingTechs > 0 ? 'amber' : 'green'} label="Missing technicians" value={m.missingTechs} sub="unfilled staffing demand · from Staffing by project" onOpen={() => setDetail('missingTechs')}
+        <Tile label="Top bottleneck" value={<span style={{ fontSize: 15 }}>{m.topBottleneck}</span>} onOpen={() => setDetail('bottleneck')}
+          hint={`The process phase with the most projects right now — where the queue actually is (${m.bottleneckCount} projects). Click for the list.`} />
+        <Tile accent="red" label="Alerts · critical" value={m.alertCritical} onOpen={() => setDetail('alertCritical')} hint="Alerts that hit a client outcome or breach the Readiness SLA. Act now (~24-48h). Click to see them." />
+        <Tile accent="amber" label="Alerts · action" value={m.alertAction} onOpen={() => setDetail('alertAction')} hint="Real issues you own the timing on — handle this week. Click to see them." />
+        <Tile accent={m.missingTechs > 0 ? 'amber' : 'green'} label="Missing technicians" value={m.missingTechs} onOpen={() => setDetail('missingTechs')}
           hint="How many more technicians the active projects still need (needed − assigned), excluding gaps you've accepted. Click for the per-project breakdown." />
       </div>
 
