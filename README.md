@@ -1,6 +1,7 @@
 # Genda Ops — Buildots Operations Manager platform
 
 **▶ Live demo: https://genda-ops-platform.vercel.app**
+&nbsp;·&nbsp; **🖥 Presentation: https://genda-ops-platform.vercel.app/deck/**
 
 An interactive operating system for the Genda beacon-installation operation, built for the
 Buildots Operations Manager take-home. It renders a full ops platform across a dashboard and
