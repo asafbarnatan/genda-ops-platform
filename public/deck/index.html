@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operations System Design — Asaf Bar Natan · Buildots</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ============ TOKENS (DESIGN.md §B — the deck) ============ */
+:root{
+  --ink:#20201E; --ink-2:#6B6C6E; --ink-3:#9A9B9D;
+  --bg:#F5F6F4; --surface:#FFFFFF; --border:#E6E7E9; --border-2:#EFEFEF;
+  --indigo:#5B4FE9; --indigo-bg:#EEEcFb;
+  --lime:#DDF250; --lime-soft:#EAF6A8;
+  --amber:#E6B23C;
+  --dark-1:#1E1E1C; --dark-2:#2A2C22; --dark-line:#3A3A38;
+  --green:#3FB37F; --green-bg:#E9F6F0;
+  --rag-amber:#E8973F; --rag-amber-bg:#FBF0E2;
+  --red:#E5533D; --red-bg:#FBE9E6;
+  --provided:#2F6DB5; --provided-bg:#E9F0F9;
+  --fictive:#C77D16; --fictive-bg:#FBF1E1;
+  --sh-card:0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(20,20,20,.05);
+  --sh-lift:0 10px 34px rgba(20,20,20,.10);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font); color:var(--ink);
+  background:#111112;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  overflow:hidden;
+}
+h1,h2,h3,p{margin:0}
+
+/* ============ STAGE / VIEWER ============ */
+#stage{
+  position:fixed; left:50%; top:50%;
+  width:1280px; height:720px;
+  transform:translate(-50%,-50%) scale(1);
+  transform-origin:center center;
+}
+.slide{
+  position:absolute; inset:0;
+  width:1280px; height:720px;
+  padding:60px 68px;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  opacity:0; visibility:hidden;
+  transition:opacity .35s ease;
+}
+.slide.active{opacity:1; visibility:visible; z-index:2}
+@media (prefers-reduced-motion:reduce){.slide{transition:none}}
+
+.slide--light{background:var(--bg); color:var(--ink)}
+.slide--dark{
+  background:linear-gradient(135deg,var(--dark-1) 0%, var(--dark-2) 100%);
+  color:#fff;
+}
+
+/* ---- decorative motifs ---- */
+.slide--light::before{ /* faint + watermark */
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='46' height='46'><path d='M23 16v14 M16 23h14' stroke='%2320201E' stroke-opacity='0.05' stroke-width='1.4' stroke-linecap='round'/></svg>");
+  background-size:46px 46px;
+}
+.slide--light::after{ /* pale-lime glow top-right */
+  content:""; position:absolute; top:-160px; right:-160px; width:520px; height:520px;
+  border-radius:50%; pointer-events:none; z-index:0;
+  background:radial-gradient(circle, rgba(221,242,80,.30) 0%, rgba(221,242,80,0) 68%);
+}
+.slide > *{position:relative; z-index:1}
+
+/* beacon grid (dark slides) */
+.beacon-grid{
+  position:absolute; top:-40px; right:-30px; width:430px; height:460px; z-index:0;
+  pointer-events:none;
+  -webkit-mask-image:linear-gradient(215deg,#000 30%, transparent 78%);
+  mask-image:linear-gradient(215deg,#000 30%, transparent 78%);
+  background-image:
+    repeating-linear-gradient(0deg,transparent 0 43px, rgba(221,242,80,.55) 43px 44px),
+    repeating-linear-gradient(90deg,transparent 0 43px, rgba(221,242,80,.55) 43px 44px);
+}
+.beacon-grid i{position:absolute; width:8px; height:8px; border-radius:50%; background:var(--lime); box-shadow:0 0 10px rgba(221,242,80,.7)}
+.plus-mark{position:absolute; top:196px; right:112px; font-weight:800; font-size:52px; line-height:1; color:var(--lime); z-index:1}
+
+/* ============ CHROME (label + logo + page no) ============ */
+.chrome{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px}
+.eyebrow{
+  font-size:11px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink-2);
+}
+.slide--dark .eyebrow{color:#B9BAB2}
+.eyebrow b{color:inherit; font-weight:600}
+.eyebrow .br{color:var(--indigo); font-weight:800}
+.slide--dark .eyebrow .br{color:var(--lime)}
+
+.bd-logo{font-size:15px; font-weight:800; letter-spacing:.04em; color:var(--ink); white-space:nowrap}
+.bd-logo .br{color:var(--ink-3); font-weight:700; margin:0 5px}
+.bd-logo .pl{color:#c9d43f}
+.slide--dark .bd-logo{color:#fff}.slide--dark .bd-logo .br{color:#75766e}
+
+.pageno{
+  position:absolute; bottom:30px; right:68px; z-index:3;
+  font-size:11px; font-weight:600; letter-spacing:.14em; color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+.slide--dark .pageno{color:#6f7068}
+
+/* ============ TYPE ============ */
+.title{font-weight:800; letter-spacing:-.02em; line-height:1.02; text-wrap:balance}
+.slide--dark .title{color:#fff}
+.hero-title{font-size:49px; white-space:nowrap}
+.page-title{font-size:40px; letter-spacing:-.022em}
+.subtitle{font-size:19px; color:var(--ink-2); font-weight:400; line-height:1.45}
+.slide--dark .subtitle{color:#C4C5BD}
+.lead{font-size:17px; color:var(--ink-2); line-height:1.5; max-width:70ch}
+.micro{font-size:11px; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3)}
+
+.section-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--ink); color:#fff; border-radius:7px; padding:7px 13px;
+  font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+}
+.section-pill .n{color:var(--lime)}
+
+/* ============ CARDS ============ */
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  box-shadow:var(--sh-card); padding:20px 22px; position:relative;
+}
+.card--accent{border-left:4px solid var(--indigo)}
+.card--lime{border-left:4px solid #c9d43f}
+.card--green{border-left:4px solid var(--green)}
+.card--amber{border-left:4px solid var(--rag-amber)}
+.card--red{border-left:4px solid var(--red)}
+.card h3{font-size:15px; font-weight:700; letter-spacing:-.01em}
+.card p{font-size:13.5px; color:var(--ink-2); line-height:1.5; margin-top:6px}
+
+.badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:30px; height:30px; padding:0 9px; border-radius:8px;
+  background:var(--indigo); color:#fff; font-weight:700; font-size:15px;
+}
+.badge--lime{background:var(--lime); color:var(--ink)}
+
+/* chips / pills */
+.chip{display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border-radius:14px;
+  font-size:12px; font-weight:600; border:1px solid transparent}
+.chip--provided{background:var(--provided-bg); color:var(--provided); border-color:#cfe0f2}
+.chip--fictive{background:var(--fictive-bg); color:var(--fictive); border-color:#f0dcbb}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.dot--provided{background:var(--provided)} .dot--fictive{background:var(--fictive)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:700}
+.pill--green{background:var(--green-bg);color:#2c8a61}
+.pill--amber{background:var(--rag-amber-bg);color:#c37619}
+.pill--red{background:var(--red-bg);color:#c53a26}
+
+/* callout bar */
+.callout{
+  display:flex; align-items:center; gap:14px; margin-top:auto;
+  background:rgba(91,79,233,.06); border:1px solid rgba(91,79,233,.16);
+  border-radius:12px; padding:14px 18px;
+}
+.callout .tag{background:var(--indigo); color:#fff; border-radius:6px; padding:5px 10px;
+  font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap}
+.callout p{font-size:14px; color:var(--ink); line-height:1.45}
+.callout--lime{background:rgba(221,242,80,.16); border-color:rgba(180,196,40,.4)}
+.callout--lime .tag{background:#20201E; color:var(--lime)}
+
+/* ============ SLIDE 1 — TITLE ============ */
+.title-wrap{display:flex; flex-direction:column; justify-content:center; height:100%}
+.title-wrap .hero-title{margin:14px 0 16px}
+.cat-row{display:flex; gap:10px; margin:6px 0 0}
+.cat{border:1px solid var(--dark-line); color:#C4C5BD; border-radius:7px; padding:7px 14px; font-size:12px; font-weight:500; letter-spacing:.02em}
+.statrow{display:flex; gap:0; margin-top:44px; border-top:1px solid var(--dark-line); padding-top:0}
+.stat{flex:1; padding:18px 26px 0 0; }
+.stat .k{font-size:10.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:#8a8b82}
+.stat .v{font-size:16px; font-weight:700; color:#fff; margin-top:7px}
+.linkrow{display:flex; gap:26px; margin-top:26px; align-items:center}
+.linkrow a{color:var(--lime); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:1px; text-decoration-color:rgba(221,242,80,.55); font-size:13.5px; font-weight:600; letter-spacing:.01em; display:inline-flex; gap:7px; align-items:center}
+.linkicon{width:15px; height:15px; object-fit:contain; filter:brightness(0) invert(1); opacity:.92}
+.linkrow .sep{color:#55564e}
+.presenter{color:#fff; font-size:16px; font-weight:600; margin-top:2px}
+.presenter span{color:#9a9b92; font-weight:400}
+
+/* ============ SLIDE 2 — ROUTE ============ */
+.route{display:flex; align-items:flex-start; gap:0; margin:auto 0}
+.stop{flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; position:relative; padding:0 8px}
+.stop:not(:last-child)::after{content:""; position:absolute; top:39px; right:-50%; width:100%; height:2px; z-index:1;
+  background:repeating-linear-gradient(90deg,rgba(91,79,233,.4) 0 7px, transparent 7px 13px)}
+.stop:not(:last-child)::before{content:"›"; position:absolute; top:39px; left:100%; transform:translate(-50%,-50%);
+  color:var(--indigo); font-size:26px; font-weight:800; line-height:1; z-index:2; background:var(--bg); padding:0 5px}
+.logo-chip{
+  width:130px; height:78px; border-radius:16px; background:#fff; border:1px solid var(--border);
+  box-shadow:var(--sh-card); display:flex; align-items:center; justify-content:center; z-index:2; position:relative;
+}
+.logo-chip img{max-width:110px; max-height:58px; object-fit:contain}
+.logo-chip .mono{font-weight:800; font-size:19px; letter-spacing:.02em; color:var(--ink)}
+.logo-chip .mono.sm{font-size:15px}
+.logo-chip .mono.word{font-size:16px; letter-spacing:-.01em}
+.stop .role{font-size:13.5px; font-weight:700; margin-top:16px; letter-spacing:-.01em; min-height:34px}
+.stop .org{font-size:12px; color:var(--indigo); font-weight:700; margin-top:3px}
+.stop .desc{font-size:11.5px; color:var(--ink-2); line-height:1.4; margin-top:7px}
+.route-lead{font-size:20px; font-weight:700; letter-spacing:-.015em}
+.route-lead b{color:var(--indigo)}
+
+/* ============ SLIDE 3 — AGENDA ============ */
+.agenda-top{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px}
+.agenda-top .a{display:inline-flex; align-items:center; gap:9px; font-size:14px; color:var(--ink-2); font-weight:500;
+  background:#fff; border:1px solid var(--border); border-radius:9px; padding:9px 15px}
+.agenda-top .a b{color:var(--ink); font-weight:700}
+.tabgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:8px}
+.tabgrid .t{background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-card);
+  padding:18px 20px; display:flex; align-items:center; gap:15px}
+.tabgrid .t .badge{flex:none}
+.tabgrid .t .nm{font-size:15.5px; font-weight:700; letter-spacing:-.01em}
+.tabgrid .t .pt{font-size:11px; color:var(--ink-3); font-weight:600; letter-spacing:.05em; text-transform:uppercase; margin-top:2px}
+.framing{font-size:15px; font-weight:600; color:var(--ink); margin:22px 0 2px}
+.framing b{color:var(--indigo)}
+.agenda-list{display:flex; flex-direction:column; gap:20px; margin:auto 0}
+.ai{display:flex; align-items:baseline; gap:20px}
+.ai-n{font-size:30px; font-weight:800; color:var(--indigo); line-height:1; min-width:40px; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+.ai-t{font-size:21px; font-weight:700; letter-spacing:-.015em; color:var(--ink)}
+.ai-parts{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.ai-parts span{font-size:12.5px; font-weight:600; color:var(--ink-2); background:#fff; border:1px solid var(--border); border-radius:8px; padding:6px 12px}
+
+/* ============ SLIDE 4 — BUILT / USED ============ */
+.two-col{display:grid; grid-template-columns:1fr 1.15fr; gap:26px; margin-top:20px; flex:1}
+.two-col > div{display:flex; flex-direction:column}
+.two-col .built{align-self:start}
+.col-h{font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); margin-bottom:14px}
+.built{background:#fff; border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-card); padding:24px 26px; display:flex; flex-direction:column}
+.built .big{font-size:19px; font-weight:700; line-height:1.35; letter-spacing:-.015em}
+.built .sub{font-size:14px; color:var(--ink-2); line-height:1.5; margin-top:12px}
+.built .prov{display:flex; gap:8px; margin-top:auto; padding-top:16px}
+.tool-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.tool{display:flex; align-items:center; gap:13px; background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-card); padding:13px 15px}
+.tool .logo-chip{width:54px; height:54px; border-radius:12px; flex:none}
+.tool .logo-chip img{max-width:38px; max-height:34px}
+.tool .logo-chip .mono{font-size:16px}
+.tool .tn{font-size:14.5px; font-weight:700; letter-spacing:-.01em}
+.tool .td{font-size:11.5px; color:var(--ink-2); margin-top:2px; line-height:1.3}
+.tool .td b{color:var(--ink); font-weight:700}
+.tool .td em{color:var(--amber); font-style:normal; font-weight:700}
+.tool .stat-badge{margin-left:auto; text-align:right; white-space:nowrap}
+.tool .stat-badge .num{font-size:19px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.tool .stat-badge .lbl{font-size:10.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
+.tool .stat-badge .num em{color:var(--amber); font-style:normal}
+
+/* ============ SLIDE 5 — SOURCE CLARITY ============ */
+.prov-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:26px; align-items:start}
+.prov-card{background:#fff; border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-card); padding:26px 28px; display:flex; flex-direction:column}
+.prov-card.provided{border-top:4px solid var(--provided)}
+.prov-card.fictive{border-top:4px solid var(--fictive)}
+.prov-head{display:flex; align-items:center; gap:12px; margin-bottom:6px}
+.prov-head .sq{width:20px; height:20px; border-radius:5px}
+.provided .sq{background:var(--provided)} .fictive .sq{background:var(--fictive)}
+.prov-head h3{font-size:17px; font-weight:800; letter-spacing:-.01em}
+.prov-head .tagm{font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-left:auto}
+.provided .tagm{color:var(--provided)} .fictive .tagm{color:var(--fictive)}
+.prov-card ul{list-style:none; padding:0; margin:16px 0 0; display:flex; flex-direction:column; gap:14px}
+.prov-card li{font-size:13.5px; color:var(--ink); line-height:1.45; padding-left:20px; position:relative}
+.prov-card li::before{content:""; position:absolute; left:0; top:7px; width:8px; height:8px; border-radius:2px}
+.provided li::before{background:var(--provided)} .fictive li::before{background:var(--fictive)}
+.prov-card li b{font-weight:700}
+.prov-card li .m{color:var(--ink-2); font-size:12.5px}
+.flagnote{margin-top:auto; padding-top:14px; font-size:12px; color:var(--ink-2)}
+.flagnote b{color:var(--fictive)}
+
+/* ============ TAB SLIDES 6–11 ============ */
+.tab-head{display:flex; align-items:flex-start; gap:18px}
+.tab-num{font-size:15px; font-weight:800; color:#fff; background:var(--indigo); border-radius:10px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex:none}
+.tab-head .goal{font-size:16px; color:var(--ink-2); line-height:1.45; margin-top:9px; max-width:74ch}
+.tab-head .goal b{color:var(--ink); font-weight:700}
+.comp-label{font-size:11px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); margin:22px 0 13px}
+.comp-grid{margin-bottom:8px}
+.comp-grid{display:grid; gap:14px}
+.comp-grid.c2{grid-template-columns:1fr 1fr}
+.comp-grid.c3{grid-template-columns:repeat(3,1fr)}
+.comp-grid.c4{grid-template-columns:repeat(4,1fr)}
+.comp{background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:var(--sh-card); padding:16px 18px; border-top:3px solid var(--indigo)}
+.comp.lime{border-top-color:#c9d43f} .comp.green{border-top-color:var(--green)} .comp.amber{border-top-color:var(--rag-amber)}
+.comp .ch{font-size:14px; font-weight:700; letter-spacing:-.01em}
+.comp .cd{font-size:12px; color:var(--ink-2); line-height:1.45; margin-top:6px}
+
+/* tab slide with screenshot: text left, browser frame right */
+.tabwrap{display:flex; gap:30px; flex:1; margin-top:12px; min-height:0}
+.tabtext{width:38%; display:flex; flex-direction:column; min-width:0}
+.tabwrap.wl .tabtext{width:53%}
+.tabwrap.wr .tabtext{width:37%}
+.tabwrap.s10 .tabtext{width:43%}
+.tabwrap.s10 .trig{font-size:10.5px}
+.tabwrap.s9 .tabtext{width:47%}
+.scorecard.s9c div{padding:8px 6px}
+.scorecard.s9c .hdr{font-size:9px; white-space:nowrap}
+.scorecard.s9c .hdr .wt{white-space:nowrap}
+.scorecard.s9c .val,.scorecard.s9c .final,.scorecard.s9c .name{font-size:11.5px}
+.tabtext .page-title{font-size:31px; line-height:1.05}
+.tabtext .tab-num{width:40px; height:40px; font-size:14px}
+.tabtext .goal{font-size:15.5px; margin-top:14px; max-width:none}
+.tabtext .callout{margin-top:auto}
+.tabtext .callout p{font-size:13px}
+body{text-wrap:pretty}
+.goal, .callout p, .imp p, .tabfns li, .lead, .comp .cd, .stop .desc, .asm-col .a .v, .mcg-h{text-wrap:pretty}
+.tabwrap.s9 .goal{white-space:nowrap; font-size:14px}
+.tabshot{flex:1; display:flex; align-items:center; justify-content:center; min-width:0}
+.tabshot.alt{align-items:flex-start; padding-top:4px}
+.browser{width:100%; border-radius:11px; overflow:hidden; background:#fff; border:1px solid #E2E3E5;
+  box-shadow:0 22px 55px rgba(20,20,20,.24), 0 5px 16px rgba(20,20,20,.12)}
+.browser img{display:block; width:100%; height:auto}
+.trig{width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:var(--sh-card); font-size:11px}
+.trig th{background:#FAFAFB; text-align:left; font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); padding:7px 9px; border-bottom:1px solid var(--border)}
+.trig td{padding:8px 9px; border-bottom:1px solid var(--border-2); vertical-align:top; line-height:1.32}
+.trig tbody tr:last-child td{border-bottom:none}
+.trig .num{color:var(--ink-3); font-weight:700; width:16px; text-align:center}
+.trig .dot{width:16px}
+.trig .dot i{width:9px; height:9px; border-radius:50%; display:inline-block; margin-top:2px}
+.trig .tg{color:var(--ink); font-weight:600; width:44%}
+.trig .ac{color:var(--indigo)}
+.seq-callout{margin-top:auto; align-items:flex-start; padding:16px 20px}
+.seq-body{flex:1}
+.seq-h{font-size:10.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); margin-bottom:4px}
+.seq{display:flex; flex-direction:column}
+.seq span{position:relative; padding:7px 0 7px 24px; font-size:14px; font-weight:700; color:var(--ink)}
+.seq span::before{content:""; position:absolute; left:4px; top:12px; width:10px; height:10px; border-radius:50%; background:var(--indigo)}
+.seq span:not(:last-child)::after{content:""; position:absolute; left:8.5px; top:22px; width:2px; height:14px; background:linear-gradient(var(--indigo),#c9d43f)}
+.seq span:last-child::before{background:#c9d43f}
+.seq-tool{font-size:12.5px; color:var(--ink-2); margin-top:10px}
+.seq-tool b{color:var(--ink)}
+.tabfns{list-style:none; padding:0; margin:14px 0 0; display:flex; flex-direction:column; gap:9px}
+.tabfns li{font-size:12.5px; color:var(--ink-2); line-height:1.4; padding-left:16px; position:relative}
+.tabfns li::before{content:""; position:absolute; left:0; top:6px; width:6px; height:6px; border-radius:2px; background:var(--indigo)}
+.tabfns li b{color:var(--ink); font-weight:700}
+.tabfns.mini{gap:5px; margin-top:10px}
+.tabfns.mini li{font-size:11.5px; padding-left:14px}
+.tabfns.mini li::before{top:5px; width:5px; height:5px}
+.mcchips{display:flex; flex-wrap:wrap; gap:7px}
+.mcchips span{font-size:11px; font-weight:600; color:var(--ink-2); background:#fff; border:1px solid var(--border); border-radius:7px; padding:5px 9px}
+.persona-lines{margin-top:12px; display:flex; flex-direction:column; gap:5px}
+.persona-lines div{font-size:13.5px; color:var(--ink-2); white-space:nowrap}
+.persona-lines b{color:var(--ink); font-weight:700}
+.mcgroup{margin-top:13px}
+.mcg-h{font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px}
+
+/* mini scorecard table (slide 9) */
+.scorecard{display:grid; grid-template-columns:1.3fr repeat(5,1fr) 1fr; gap:0; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--sh-card); background:#fff; font-variant-numeric:tabular-nums; margin-top:4px}
+.scorecard div{padding:11px 12px; font-size:12.5px; border-bottom:1px solid var(--border-2)}
+.scorecard .hdr{background:#FAFAFB; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.scorecard .name{font-weight:700; color:var(--ink)}
+.scorecard .val{font-weight:600; color:var(--ink-2); text-align:center}
+.scorecard .wt{font-size:9.5px; color:var(--ink-3); display:block; font-weight:600}
+.scorecard .final{background:var(--indigo-bg); font-weight:800; color:var(--indigo); text-align:center}
+.scorecard .fh{background:#E7E4FA}
+.scorecard .r2 div{border-bottom:none}
+
+/* ============ SLIDE 12 — IMPROVE ============ */
+.improve{display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin:auto 0}
+.imp{background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--sh-card); padding:28px 26px; display:flex; flex-direction:column; position:relative; overflow:hidden}
+.imp .n{display:inline-block; font-size:52px; font-weight:800; line-height:1; letter-spacing:-.03em;
+  background:linear-gradient(135deg,var(--indigo) 0%, #b7c53e 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; width:max-content}
+.imp .n::after{content:""; display:block; width:34px; height:3px; border-radius:2px; margin-top:12px;
+  background:linear-gradient(90deg,var(--indigo),#c9d43f); -webkit-text-fill-color:initial}
+.imp h3{font-size:17px; font-weight:700; margin-top:16px; letter-spacing:-.01em}
+.imp p{font-size:13px; color:var(--ink-2); line-height:1.6; margin-top:12px}
+.imp::after{content:""; position:absolute; right:-34px; bottom:-34px; width:130px; height:130px; border-radius:50%;
+  background:radial-gradient(circle,rgba(91,79,233,.10),transparent 70%)}
+
+/* ============ CLOSING (13/14) ============ */
+.center-slide{align-items:center; justify-content:center; text-align:center}
+.center-slide .big-q{font-size:80px; font-weight:800; letter-spacing:-.03em; color:#fff}
+.center-slide .sub-c{font-size:18px; color:#C4C5BD; margin-top:18px}
+.center-slide .contact{margin-top:26px; font-size:15px; color:var(--lime); font-weight:600; letter-spacing:.02em}
+.center-slide .contact span{color:#75766e; margin:0 12px}
+
+/* ============ SLIDE 15 — ASSUMPTIONS ============ */
+.assume{display:grid; grid-template-columns:1fr 1fr; gap:12px 30px; margin-top:22px}
+.assume .a{display:flex; gap:12px; padding:11px 0; border-bottom:1px solid var(--border-2)}
+.assume .a .k{font-size:12.5px; font-weight:700; color:var(--ink); min-width:150px; flex:none}
+.assume .a .v{font-size:12.5px; color:var(--ink-2); line-height:1.4}
+.asm-wrap{display:grid; grid-template-columns:1.02fr 1fr; gap:38px; margin-top:20px}
+.asm-col{display:flex; flex-direction:column; gap:11px}
+.asm-col .a{display:flex; flex-direction:column; gap:3px; padding-bottom:10px; border-bottom:1px solid var(--border-2)}
+.asm-col .a:last-child{border-bottom:none}
+.asm-col .a .k{font-size:12px; font-weight:700; color:var(--ink)}
+.asm-col .a .v{font-size:11.5px; color:var(--ink-2); line-height:1.42}
+.asm-tt{font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--indigo); margin-bottom:7px}
+.asm-t{width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:11.5px; box-shadow:var(--sh-card)}
+.asm-t th{background:#FAFAFB; text-align:left; font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); padding:7px 12px; border-bottom:1px solid var(--border)}
+.asm-t th:last-child, .asm-t td:last-child{text-align:right}
+.asm-t td{padding:6px 12px; border-bottom:1px solid var(--border-2); color:var(--ink-2)}
+.asm-t td:last-child{font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums}
+.asm-t tbody tr:last-child td{border-bottom:none}
+.asm-t .sum td{background:#F5F4FE; color:var(--indigo)}
+.asm-note{font-size:11px; color:var(--ink-3); line-height:1.4; margin-top:9px}
+
+.appendix-tag{position:absolute; bottom:28px; left:68px; background:var(--fictive-bg); color:var(--fictive); border:1px solid #f0dcbb; border-radius:14px; padding:5px 12px; font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; z-index:3}
+
+/* ============ NAV UI ============ */
+#pager{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:50;
+  display:flex; align-items:center; gap:16px; background:rgba(30,30,28,.82); backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.12); border-radius:30px; padding:9px 18px; color:#e7e7e2; font-size:12px}
+#pager button{background:none; border:none; color:#e7e7e2; font-size:17px; cursor:pointer; padding:2px 8px; border-radius:6px; line-height:1}
+#pager button:hover{background:rgba(255,255,255,.14)}
+#pager .count{font-variant-numeric:tabular-nums; letter-spacing:.08em; min-width:56px; text-align:center}
+#pager .hint{color:#8a8b82; font-size:11px; border-left:1px solid rgba(255,255,255,.14); padding-left:14px}
+#pager:focus-within, #pager button:focus-visible{outline:2px solid var(--lime); outline-offset:2px}
+
+/* ============ PRINT → PDF ============ */
+@media print{
+  @page{size:1280px 720px; margin:0}
+  html,body{background:#fff; overflow:visible}
+  #pager{display:none !important}
+  #stage{position:static; transform:none !important; width:auto; height:auto}
+  .slide{position:static; opacity:1 !important; visibility:visible !important;
+    page-break-after:always; break-after:page; box-shadow:none; margin:0}
+  .slide:last-child{page-break-after:auto; break-after:auto}
+  .slide--dark{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- ===================== SLIDE 1 — TITLE ===================== -->
+  <section class="slide slide--dark active">
+    <div class="beacon-grid"><i style="top:44px;left:44px"></i><i style="top:44px;left:220px"></i><i style="top:220px;left:132px"></i><i style="top:308px;left:308px"></i></div>
+    <span class="plus-mark">+</span>
+    <div class="chrome">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;OPERATIONS SYSTEM DESIGN&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="title-wrap">
+      <span class="micro" style="color:#8a8b82">OPERATIONS MANAGER · HOME ASSIGNMENT</span>
+      <h1 class="title hero-title">Operations System Design</h1>
+      <p class="subtitle" style="max-width:52ch">Genda Ops platform</p>
+      <div class="linkrow">
+        <a href="https://genda-ops-platform.vercel.app"><img class="linkicon" src="assets/vercel.svg" alt="">Live platform — genda-ops-platform.vercel.app</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/asafbarnatan/genda-ops-platform"><img class="linkicon" src="assets/github.svg" alt="">GitHub — /asafbarnatan/genda-ops-platform</a>
+      </div>
+      <div class="statrow">
+        <div class="stat"><div class="k">Framework</div><div class="v">6 areas · one operating model</div></div>
+        <div class="stat"><div class="k">Data</div><div class="v">13 provided projects · live platform</div></div>
+        <div class="stat"><div class="k">Presented by</div><div class="v">Asaf Bar Natan</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SLIDE 2 — ABOUT ME ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;ABOUT ME&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <p class="route-lead">Hi, I'm <b>Asaf Bar Natan</b> — I just graduated from Rice Business (MBA).</p>
+    <p class="lead" style="margin-top:8px">Operator, product builder, and strategist.</p>
+    <div class="route">
+      <div class="stop">
+        <div class="logo-chip"><img class="lg" src="assets/egoz.webp" data-fb="Egoz" data-fbc="word" alt="IDF Special Forces Egoz"></div>
+        <div class="role">Elite Team Leader · Captain</div>
+        <div class="org">IDF Special Forces · Egoz</div>
+        <div class="desc">Led 25 soldiers · 2-yr special ops.</div>
+      </div>
+      <div class="stop">
+        <div class="logo-chip"><img class="lg" src="assets/academic.png" data-fb="MTA" data-fbc="sm" alt="Academic College TLV"></div>
+        <div class="role">BA Psychology</div>
+        <div class="org">Academic College TLV</div>
+        <div class="desc">Magna Cum Laude.</div>
+      </div>
+      <div class="stop">
+        <div class="logo-chip"><img class="lg" src="assets/mccann.png" data-fb="McCann" data-fbc="word" alt="McCann"></div>
+        <div class="role">Marketing Strategy Consultant</div>
+        <div class="org">McCann</div>
+        <div class="desc">Marketing strategy for global brands.</div>
+      </div>
+      <div class="stop">
+        <div class="logo-chip"><img class="lg" src="assets/rice-business.png" data-fb="Rice" data-fbc="word" alt="Rice Business"></div>
+        <div class="role">MBA</div>
+        <div class="org">Rice Business</div>
+        <div class="desc">AI &amp; Product Management focus.</div>
+      </div>
+      <div class="stop">
+        <div class="logo-chip"><img class="lg" src="assets/sunbit.png" data-fb="Sunbit" data-fbc="word" alt="Sunbit"></div>
+        <div class="role">AI Product Innovation Intern</div>
+        <div class="org">Sunbit · fintech unicorn</div>
+        <div class="desc">Built Sunbit's AI support chatbot.</div>
+      </div>
+      <div class="stop">
+        <div class="logo-chip"><img class="lg" src="assets/antler.png" data-fb="Antler" data-fbc="word" alt="Antler"></div>
+        <div class="role">VC Associate Intern</div>
+        <div class="org">Antler (Austin branch)</div>
+        <div class="desc">Evaluated early-stage startups and founders.</div>
+      </div>
+    </div>
+    <span class="pageno">02 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 3 — AGENDA ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;AGENDA&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <h1 class="title page-title">Agenda</h1>
+    <div class="agenda-list">
+      <div class="ai"><span class="ai-n">1</span><div class="ai-t">About me</div></div>
+      <div class="ai"><span class="ai-n">2</span><div class="ai-t">What I built &amp; how</div></div>
+      <div class="ai"><span class="ai-n">3</span>
+        <div>
+          <div class="ai-t">The framework — 6 areas, walked live in the platform</div>
+          <div class="ai-parts">
+            <span>Mission Control</span><span>Project Schedule</span><span>Recruitment Pipeline</span><span>Technician Quality</span><span>Alerts &amp; Decision Logic</span><span>Process &amp; Optimisation</span>
+          </div>
+        </div>
+      </div>
+      <div class="ai"><span class="ai-n">4</span><div class="ai-t">What I'd improve with more time</div></div>
+      <div class="ai"><span class="ai-n">5</span><div class="ai-t">Questions</div></div>
+    </div>
+    <span class="pageno">03 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 4 — BUILT / USED ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;WHAT I BUILT · WHAT I USED&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <h1 class="title page-title">Built with AI — as an operator's tool</h1>
+    <div class="two-col">
+      <div>
+        <div class="col-h">What I built</div>
+        <div class="built">
+          <div class="big">A live, navigable ops platform covering all 6 areas — plus this companion deck.</div>
+          <div class="sub">The real portfolio plus a fictive operations layer, so the whole system runs end to end.</div>
+          <div class="prov">
+            <span class="chip chip--provided"><span class="dot dot--provided"></span>Provided portfolio</span>
+            <span class="chip chip--fictive"><span class="dot dot--fictive"></span>Fictive layer</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-h">What I used</div>
+        <div class="tool-grid">
+          <div class="tool">
+            <div class="logo-chip"><img class="lg" src="assets/claude.svg" data-fb="C" alt="Claude Code"></div>
+            <div><div class="tn">Claude Code</div><div class="td">Anthropic · agentic build</div></div>
+          </div>
+          <div class="tool">
+            <div class="logo-chip"><img class="lg" src="assets/antigravity.png" data-fb="AG" alt="Antigravity"></div>
+            <div><div class="tn">Antigravity</div><div class="td">Agentic coding IDE</div></div>
+          </div>
+          <div class="tool">
+            <div class="logo-chip"><img class="lg" src="assets/ycombinator.svg" data-fb="YC" alt="Y Combinator"></div>
+            <div><div class="tn">gstack</div><div class="td">Garry Tan, <b>CEO of Y Combinator</b> · <b>120k<em>★</em></b> starred it on GitHub</div></div>
+          </div>
+          <div class="tool">
+            <div class="logo-chip"><img class="lg" src="assets/nicksaraev.png" data-fb2="assets/youtube.svg" data-fb="NS" alt="Nick Saraev"></div>
+            <div><div class="tn">Nick Saraev</div><div class="td">Skills &amp; agents · <b>461k subs</b></div></div>
+          </div>
+          <div class="tool">
+            <div class="logo-chip"><img class="lg" src="assets/github.svg" data-fb="GH" alt="GitHub"></div>
+            <div><div class="tn">GitHub</div><div class="td">Repository</div></div>
+          </div>
+          <div class="tool">
+            <div class="logo-chip"><img class="lg" src="assets/vercel.svg" data-fb="V" alt="Vercel"></div>
+            <div><div class="tn">Vercel</div><div class="td">Deployment</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="callout callout--lime" style="margin-top:20px"><span class="tag">Principle</span><p>AI as an operator's tool — <b>logic first, tooling second.</b> Every field, metric, and alert earns its place by serving a real decision.</p></div>
+    <span class="pageno">04 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 5 — SOURCE CLARITY ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;SOURCE CLARITY&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <h1 class="title page-title">What came from the materials — and what I added</h1>
+    <div class="prov-grid">
+      <div class="prov-card provided">
+        <div class="prov-head"><span class="sq"></span><h3>From the materials</h3><span class="tagm">🟦 Provided</span></div>
+        <ul>
+          <li><b>Portfolio data — 13 active projects.</b> <span class="m">Account, region, stage, requested delivery, end date, duration, floors, buildings, recruitment source.</span></li>
+          <li><b>Process Template — 7 phases / 24 steps.</b> <span class="m">Sales Handoff → Go-Live.</span></li>
+        </ul>
+      </div>
+      <div class="prov-card fictive">
+        <div class="prov-head"><span class="sq"></span><h3>Added by me</h3><span class="tagm">🟧 Fictive</span></div>
+        <ul>
+          <li><b>7 technicians</b> <span class="m">(5 active + 2 churned)</span> and <b>2 vendor pipeline candidates.</b></li>
+          <li><b>All quality scores &amp; metrics</b>, technician↔project assignments, channel economics.</li>
+          <li><b>Change logs, recruit/readiness dates, alerts.</b></li>
+        </ul>
+      </div>
+    </div>
+    <span class="pageno">05 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 6 — MISSION CONTROL ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="section-pill">PART <span class="n">6</span> · DASHBOARD</span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="tabwrap">
+      <div class="tabtext">
+        <div class="tab-head"><span class="tab-num">6</span><div><h1 class="title page-title">Mission Control</h1></div></div>
+        <div class="persona-lines">
+          <div><b>Operations Manager</b> — what needs action today</div>
+          <div><b>Manager</b> — is it healthy and on trajectory?</div>
+        </div>
+        <div class="mcgroup"><div class="mcg-h">Overview</div><div class="mcchips"><span>Active projects</span><span>Technicians</span><span>Regions</span><span>Deployments</span><span>Pipeline</span></div></div>
+        <div class="mcgroup"><div class="mcg-h">North-star KPI</div><div class="mcchips"><span>Customer SLA adherence</span><span>Dropped opportunities</span><span>Readiness SLA</span></div></div>
+        <div class="mcgroup"><div class="mcg-h">Operational health</div><div class="mcchips"><span>Ready-tech coverage</span><span>% returning</span><span>Projects at risk</span><span>Avg technician quality</span><span>Top bottleneck</span><span>Alerts</span><span>Missing techs</span></div></div>
+        <div class="callout"><span class="tag">Logic</span><p>One dataset, two altitudes — the <b>OM acts today</b>,<br>the <b>manager reads trajectory</b>.</p></div>
+      </div>
+      <div class="tabshot"><div class="browser"><img src="assets/shot-mission.png" alt="Mission Control screen"></div></div>
+    </div>
+    <span class="pageno">06 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 7 — SCHEDULE ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="section-pill">PART <span class="n">2</span> · SCHEDULE &amp; DATE MANAGEMENT</span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="tabwrap">
+      <div class="tabtext">
+        <div class="tab-head"><span class="tab-num">2</span><div><h1 class="title page-title">Project Schedule</h1></div></div>
+        <p class="goal"><b>Managing change:</b> dates shift, risk recomputes.</p>
+        <ul class="tabfns">
+          <li><b>Timeline</b> — 24 steps on a real time axis; each project advances left→right.</li>
+          <li><b>Table</b> — the portfolio as sortable, filterable rows.</li>
+          <li><b>Micro details per project</b> — a 7-phase drawer + date-change log with cause.</li>
+        </ul>
+        <div class="callout"><span class="tag">Logic</span><p>Built to scale — one view controls a growing portfolio.<br>See where each project <b>is</b> versus where it <b>should be</b>, the same idea behind the Buildots product.</p></div>
+      </div>
+      <div class="tabshot"><div class="browser"><img src="assets/shot-schedule.png" alt="Project Schedule Gantt"></div></div>
+    </div>
+    <span class="pageno">07 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 8 — PIPELINE ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="section-pill">PART <span class="n">1</span> · RECRUITMENT PIPELINE</span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="tabwrap">
+      <div class="tabtext">
+        <div class="tab-head"><span class="tab-num">1</span><div><h1 class="title page-title">Recruitment Pipeline</h1></div></div>
+        <p class="goal"><b>Sourced → Screened → Onboarded → Deployed.</b><br>One dataset, filter to compare channels.</p>
+        <ul class="tabfns">
+          <li><b>Kanban</b> — 4 stage gates + a Pool lane.</li>
+          <li><b>Funnel &amp; liquidity</b> — stage counts, aging, time-to-ready.</li>
+          <li><b>Staffing demand</b> — per project: needed vs assigned vs gap.</li>
+          <li><b>Channel quality comparison</b> — yield · churn · quality.</li>
+        </ul>
+        <div class="callout" style="align-items:flex-start"><span class="tag">Logic</span><ul class="tabfns" style="margin-top:0"><li><b>Craigslist floods leads but churns 50%</b> → shift to a pre-vetted vendor, <b>Cloud Factory</b>.</li><li>Selection stays <b>conservative</b> to protect utilization, and <b>geography drives the pick</b>.</li></ul></div>
+      </div>
+      <div class="tabshot"><div class="browser"><img src="assets/shot-pipeline.png" alt="Recruitment Pipeline screen"></div></div>
+    </div>
+    <span class="pageno">08 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 9 — QUALITY ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="section-pill">PART <span class="n">3</span> · TECHNICIAN QUALITY</span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="tabwrap s9">
+      <div class="tabtext">
+        <div class="tab-head"><span class="tab-num">3</span><div><h1 class="title page-title">Technician Quality</h1></div></div>
+        <p class="goal"><b>Reliability over time</b> · weighted composite · RL feedback loop.</p>
+        <div class="comp-label" style="margin:12px 0 8px">Example scorecard — one technician, all 5 components</div>
+        <div class="scorecard s9c">
+          <div class="hdr name">Technician</div>
+          <div class="hdr val">Coverage<span class="wt">30%</span></div>
+          <div class="hdr val">Reliability<span class="wt">25%</span></div>
+          <div class="hdr val">On-time<span class="wt">20%</span></div>
+          <div class="hdr val">Upload<span class="wt">15%</span></div>
+          <div class="hdr val">Issues<span class="wt">10%</span></div>
+          <div class="hdr final fh">Quality</div>
+          <div class="name r2">Devin Carter<br><span style="font-weight:500;color:var(--ink-3);font-size:10px">Craigslist · SE · 7 installs</span></div>
+          <div class="val r2">4.6</div><div class="val r2">4.5</div><div class="val r2">4.2</div><div class="val r2">4.4</div><div class="val r2">3.9</div>
+          <div class="final r2">4.40</div>
+        </div>
+        <div class="asm-note" style="margin-top:9px; color:var(--ink)">Screen: <b>monthly quality trend</b> · hatched zones = bench (&lt;3.0) / remove (&lt;2.0).</div>
+        <div class="asm-note" style="margin-top:5px; color:var(--ink)"><b>Ladder:</b> no-show → bench · &lt;3.0 bench · &lt;2.0 remove · provisional until 3 installs.</div>
+        <div class="callout" style="margin-top:auto"><span class="tag">Logic</span><p>The <b>Regional Lead</b> fills it after each install.<br><b>Attribute before you penalise.</b></p></div>
+      </div>
+      <div class="tabshot"><div class="browser"><img src="assets/shot-quality.png" alt="Technician Quality screen"></div></div>
+    </div>
+    <span class="pageno">09 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 10 — ALERTS ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="section-pill">PART <span class="n">4</span> · ALERTS &amp; DECISION LOGIC</span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="tabwrap s10">
+      <div class="tabtext">
+        <div class="tab-head"><span class="tab-num">4</span><div><h1 class="title page-title">Alerts &amp; Decision Logic</h1></div></div>
+        <p class="goal"><b>What to act on now</b> — triaged by consequence, not a flat list.</p>
+        <ul class="tabfns mini">
+          <li><b>🔴 Critical</b> — ~24–48h; client or Readiness SLA breach.</li>
+          <li><b>🟠 At risk</b> — this week, you own the timing.</li>
+          <li><b>🟢 Monitor</b> — awareness only, ambient digest.</li>
+          <li><b>⚪ Snoozed</b> — parked; waiting or no resource now.</li>
+        </ul>
+        <div class="asm-tt" style="margin-top:12px">The 5 triggers → action</div>
+        <table class="trig">
+          <thead><tr><th>#</th><th></th><th>Trigger</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td class="dot"><i style="background:var(--red)"></i></td><td class="tg">Readiness gap inside the 10-day buffer, no Ready tech</td><td class="ac">redeploy a returning tech / escalate</td></tr>
+            <tr><td class="num">2</td><td class="dot"><i style="background:var(--red)"></i></td><td class="tg">Acceleration breaches lead time</td><td class="ac">recompute runway; cover or escalate</td></tr>
+            <tr><td class="num">3</td><td class="dot"><i style="background:var(--red)"></i></td><td class="tg">No-show / cancel at deploy</td><td class="ac">pool reassignment; auto-bench</td></tr>
+            <tr><td class="num">4</td><td class="dot"><i style="background:var(--rag-amber)"></i></td><td class="tg">Recruitment window opens, no tech</td><td class="ac">start recruiting / reserve a pool tech</td></tr>
+            <tr><td class="num">5</td><td class="dot"><i style="background:var(--rag-amber)"></i></td><td class="tg">Coverage shortfall &lt; 90%</td><td class="ac">attribute cause before penalising</td></tr>
+          </tbody>
+        </table>
+        <div class="callout" style="margin-top:12px"><span class="tag">Logic</span><p>Alerts fire <b>automatically</b>; you can also add one manually.</p></div>
+      </div>
+      <div class="tabshot"><div class="browser"><img src="assets/shot-alerts.png" alt="Alerts triage board"></div></div>
+    </div>
+    <span class="pageno">10 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 11 — PROCESS ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="section-pill">PART <span class="n">5</span> · PROCESS &amp; OPTIMISATION</span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="tabwrap">
+      <div class="tabtext">
+        <div class="tab-head"><span class="tab-num">5</span><div><h1 class="title page-title">Process &amp; Optimisation</h1></div></div>
+        <p class="goal">The <b>24-step template as a live workflow</b> — flows to the Schedule and the project.</p>
+        <ul class="tabfns">
+          <li><b>Live workflow</b> — 7 phases / 24 steps, project counts per step, office/field boundary.</li>
+          <li><b>Two pathways</b> — new-hire (~6-wk spine) vs returning.</li>
+          <li><b>Structural improvement opportunities</b> — surfaced from the live logs, data, and project changes; not a fixed list.</li>
+        </ul>
+        <div class="callout seq-callout"><span class="tag">Logic</span><div class="seq-body">
+          <div class="seq-h">Sequence</div>
+          <div class="seq"><span>Standardize</span><span>Cluster / reuse</span><span>Automate</span><span>Unlock vendor scale</span></div>
+          <div class="seq-tool"><b>Now:</b> Jira + Confluence + native automation + Rovo (Atlassian agents &amp; MCP).<br><b>Grow into:</b> Claude Code Skills, once standardized.</div>
+        </div></div>
+      </div>
+      <div class="tabshot"><div class="browser"><img src="assets/shot-process.png" alt="Process workflow screen"></div></div>
+    </div>
+    <span class="pageno">11 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 12 — IMPROVE ===================== -->
+  <section class="slide slide--light">
+    <div class="chrome">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;WITH MORE TIME&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <h1 class="title page-title">What I'd improve with more time</h1>
+    <div class="improve">
+      <div class="imp">
+        <span class="n">01</span>
+        <h3>Go deeper, per project</h3>
+        <p>Drill to per-project micro detail.<br>I lacked <b>per-project SLA</b> data, so I assumed a standard readiness buffer and a ~3-month "quarterly" visit cadence.<br>Real SLAs and cadence likely vary by account.</p>
+      </div>
+      <div class="imp">
+        <span class="n">02</span>
+        <h3>Cost &amp; vendor economics</h3>
+        <p>I didn't model <b>ready-tech cost per channel</b>.<br>Or the <b>per-technician usage commitments</b> to vendors like Cloud Factory.<br>Next: calibrate real numbers with the team.</p>
+      </div>
+      <div class="imp">
+        <span class="n">03</span>
+        <h3>A seat for every stakeholder</h3>
+        <p><b>All stakeholders</b> work in one platform — a shared language and standard.<br>The Regional Lead adds field inputs in the same views.<br>Less tech-savvy techs get a <b>Slack push</b> or a simpler version.</p>
+      </div>
+    </div>
+    <span class="pageno">12 / 15</span>
+  </section>
+
+  <!-- ===================== SLIDE 13 — QUESTIONS ===================== -->
+  <section class="slide slide--dark center-slide">
+    <div class="beacon-grid"><i style="top:44px;left:88px"></i><i style="top:132px;left:264px"></i><i style="top:264px;left:176px"></i></div>
+    <span class="plus-mark">+</span>
+    <div class="chrome" style="position:absolute;top:60px;left:68px;right:68px">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;DISCUSSION&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <div class="big-q">Questions?</div>
+  </section>
+
+  <!-- ===================== SLIDE 14 — THANK YOU ===================== -->
+  <section class="slide slide--dark center-slide">
+    <div class="beacon-grid"><i style="top:44px;left:44px"></i><i style="top:220px;left:308px"></i><i style="top:308px;left:132px"></i></div>
+    <span class="plus-mark">+</span>
+    <div class="big-q">Thank you.</div>
+  </section>
+
+  <!-- ===================== SLIDE 15 — ASSUMPTIONS (appendix) ===================== -->
+  <section class="slide slide--light">
+    <span class="appendix-tag">Appendix · not presented</span>
+    <div class="chrome">
+      <span class="eyebrow"><span class="br">[</span>&nbsp;OPERATING-LOGIC ASSUMPTIONS&nbsp;<span class="br">]</span></span>
+      <span class="bd-logo">[<span class="br">BUILDOTS</span><span class="pl">+</span>]</span>
+    </div>
+    <h1 class="title page-title">Key assumptions</h1>
+    <div class="asm-wrap">
+      <div class="asm-col">
+        <div class="a"><div class="k">SLA</div><div class="v">Projects delivered on or before the committed date. For simplicity, this excludes other agreement components such as return visits and additional terms.</div></div>
+        <div class="a"><div class="k">Readiness SLA</div><div class="v">Ready ≥ <b>10 business days</b> before Requested Delivery. Internal; the leading indicator of the Account SLA.</div></div>
+        <div class="a"><div class="k">Utilization over headcount</div><div class="v">Size crews to keep technicians and vendors <b>utilized</b>, not to grow headcount. Bounded by <b>vendor contract terms</b> (minimums, commitments) and by <b>geography</b> — a technician serves same-region work; cross-region travel is costly.</div></div>
+        <div class="a"><div class="k">Two deploy paths</div><div class="v">New-hire (~6-wk spine) vs returning (days; skips Training + PPE). KPI = % returning deployments.</div></div>
+        <div class="a"><div class="k">Source of truth</div><div class="v">Jira + Confluence; the mockup = the ideal Jira for this operation. Channels = provided mix (Craigslist-dominant); vendor (Cloud Factory) = strategic direction.</div></div>
+      </div>
+      <div class="asm-col">
+        <div class="asm-tt">Recruitment lead time — why we start ~6 weeks out</div>
+        <table class="asm-t">
+          <thead><tr><th>Step</th><th>Time</th></tr></thead>
+          <tbody>
+            <tr><td>Sourced → Screened</td><td>≤ 5 days</td></tr>
+            <tr><td>Screened → Onboarded</td><td>≤ 10 days</td></tr>
+            <tr><td>Onboarding</td><td>≤ 12 days</td></tr>
+            <tr class="sum"><td>= Sourced-to-Ready</td><td>≈ 27 days</td></tr>
+            <tr><td>+ readiness buffer</td><td>10 business days</td></tr>
+            <tr class="sum"><td>⇒ Start recruiting</td><td>≈ 6 weeks out</td></tr>
+          </tbody>
+        </table>
+        <div class="asm-tt" style="margin-top:16px">Technicians needed (per project)</div>
+        <table class="asm-t">
+          <thead><tr><th>Project size</th><th>Techs</th></tr></thead>
+          <tbody>
+            <tr><td>≤ 20 floors &amp; 1 building</td><td>1</td></tr>
+            <tr><td>21–40 floors or 2 buildings</td><td>2</td></tr>
+            <tr><td>41+ floors</td><td>3</td></tr>
+          </tbody>
+        </table>
+        <div class="asm-note">~20 floors / technician-day. The rule is a default — the OM can Accept a gap when the crew is enough.</div>
+      </div>
+    </div>
+    <span class="pageno">15 / 15</span>
+  </section>
+
+</div>
+
+<div id="pager" role="toolbar" aria-label="Slide navigation">
+  <button id="prev" aria-label="Previous slide">‹</button>
+  <span class="count"><span id="cur">1</span> / 15</span>
+  <button id="next" aria-label="Next slide">›</button>
+  <span class="hint">← → to navigate · F fullscreen · P print → PDF</span>
+</div>
+
+<script>
+// Logo fallback: real file → optional secondary file → wordmark chip
+document.querySelectorAll('img.lg').forEach(function(im){
+  im.addEventListener('error', function(){
+    var fb2 = im.getAttribute('data-fb2');
+    if(fb2){ im.removeAttribute('data-fb2'); im.src = fb2; return; }
+    var s = document.createElement('span');
+    s.className = 'mono ' + (im.getAttribute('data-fbc') || 'word');
+    s.textContent = im.getAttribute('data-fb') || '';
+    im.replaceWith(s);
+  });
+});
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var stage = document.getElementById('stage');
+  var cur = document.getElementById('cur');
+  var i = 0;
+  function show(n){
+    i = Math.max(0, Math.min(slides.length-1, n));
+    slides.forEach(function(s,k){ s.classList.toggle('active', k===i); });
+    cur.textContent = i+1;
+    location.hash = i+1;
+  }
+  function fit(){
+    var s = Math.min(window.innerWidth/1280, window.innerHeight/720)*0.96;
+    stage.style.transform = 'translate(-50%,-50%) scale('+s+')';
+  }
+  var shot = parseInt((new URLSearchParams(location.search)).get('shot'),10);
+  if(!isNaN(shot)){
+    document.getElementById('pager').style.display='none';
+    stage.style.left='0'; stage.style.top='0'; stage.style.transform='none';
+    show(shot-1);
+    return;
+  }
+  window.addEventListener('resize', fit); fit();
+  document.getElementById('next').onclick = function(){ show(i+1); };
+  document.getElementById('prev').onclick = function(){ show(i-1); };
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){ show(i+1); e.preventDefault(); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ show(i-1); e.preventDefault(); }
+    else if(e.key==='Home'){ show(0); }
+    else if(e.key==='End'){ show(slides.length-1); }
+    else if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement){document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();}else{document.exitFullscreen&&document.exitFullscreen();} }
+  });
+  stage.addEventListener('click', function(e){ if(e.target.closest('a'))return; show(i+1); });
+  var start = parseInt((location.hash||'').replace('#',''),10);
+  show(isNaN(start)?0:start-1);
+})();
+</script>
+</body>
+</html>
