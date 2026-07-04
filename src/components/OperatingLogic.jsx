@@ -92,10 +92,10 @@ const CONTENT = {
       { h: 'The 5 triggers → action', table: {
         cols: ['#', 'Tier', 'Trigger', 'Action'],
         rows: [
-          ['1', '🟠', 'Recruitment window opens, no tech', 'start recruiting / reserve a pool tech'],
-          ['2', '🔴', 'Readiness gap — inside the 10-day buffer, no Ready tech', 'redeploy a returning tech / escalate'],
-          ['3', '🔴', 'Acceleration breaches lead time', 'recompute runway; cover or escalate'],
-          ['4', '🔴', 'No-show / cancel at deploy', 'pool reassignment; auto-bench'],
+          ['1', '🔴', 'Readiness gap — inside the 10-day buffer, no Ready tech', 'redeploy a returning tech / escalate'],
+          ['2', '🔴', 'Acceleration breaches lead time', 'recompute runway; cover or escalate'],
+          ['3', '🔴', 'No-show / cancel at deploy', 'pool reassignment; auto-bench'],
+          ['4', '🟠', 'Recruitment window opens, no tech', 'start recruiting / reserve a pool tech'],
           ['5', '🟠', 'Coverage shortfall < 90%', 'attribute cause before penalising'],
         ],
       } },
