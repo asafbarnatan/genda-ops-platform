@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useStore } from '../data/store.jsx';
-import { qualityComposite, suggestedPool, qualityTrend, metricTrend, activeTechs, METRIC_DEFS, assignedNames } from '../data/derive';
+import { qualityComposite, suggestedPool, qualityTrend, metricTrend, activeTechs, METRIC_DEFS, assignedNames, fmtDate } from '../data/derive';
 import { PoolPill, FilterBar } from '../components/bits.jsx';
 import { Modal } from '../components/Modal.jsx';
 import OperatingLogic from '../components/OperatingLogic.jsx';
@@ -45,6 +45,19 @@ function Scorecard({ tech, onClose, onSave, onDelete }) {
         <div><div className="micro">Candidate Score</div><div style={{ fontSize: 34, fontWeight: 700 }} className="mono-num">{tech.candidateScore ?? '—'}</div></div>
         <div style={{ marginLeft: 'auto', textAlign: 'right' }}><div className="micro">Channel · Region</div><div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>{tech.channel} · {tech.region}</div><div className="small muted">{tech.installs} installs {tech.provisional && '· provisional'}</div></div>
       </div>
+
+      {tech.noShows?.length > 0 && (
+        <div className="noshow-panel">
+          <div className="noshow-head">⚠ No-show incidents — the hard gate · {tech.noShows.length}</div>
+          {tech.noShows.map((n, i) => (
+            <div key={i} className="noshow-row">
+              <div className="noshow-meta"><b>{fmtDate(n.date)}</b> · {n.project} <span className="muted">({n.region})</span> · {n.event}</div>
+              <div className="small muted">{n.note}</div>
+            </div>
+          ))}
+          <div className="small noshow-foot">One no-show is a hard gate → Benched (even while provisional); a second → Removed.</div>
+        </div>
+      )}
 
       <div className="micro" style={{ margin: '4px 0 8px', display: 'flex', justifyContent: 'space-between' }}>
         <span>RL feedback — the 5 reliability metrics (1-5)</span>

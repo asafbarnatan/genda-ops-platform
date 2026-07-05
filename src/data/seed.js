@@ -3,7 +3,7 @@
 // `fictive` rows (technicians, candidates, scores, assignments) are ours, per 4_Data_Layer.md.
 // This module is the initial seed; the store loads it into localStorage on first run.
 
-export const SEED_VERSION = 'v6';
+export const SEED_VERSION = 'v7';
 export const TODAY = '2026-07-01'; // the operation's "today" (matches the strategy docs)
 
 // ---------------------------------------------------------------------------
@@ -112,8 +112,8 @@ export const seedTechnicians = [
   { id: 'T-103', name: 'Andre Foster', channel: 'LinkedIn', region: 'Southeast', lead: 'Gil', pool: 'Active', candidateScore: 4, metrics: { coverage: 4, reliability: 4, ontime: 5, upload: 4, issues: 4 }, installs: 5, projects: ['27th Street', 'Z1', 'RISE', 'WAP'], provisional: false, note: 'Reliable LinkedIn-sourced tech.', provenance: 'fictive' },
   { id: 'T-104', name: 'Tyler Nguyen', channel: 'Facebook', region: 'Southeast', lead: 'Gil', pool: 'Active', candidateScore: 3, metrics: { coverage: 4, reliability: 4, ontime: 3, upload: 4, issues: 3 }, installs: 3, projects: ['JPSM', 'UGA', 'Buck D', 'WAP'], provisional: false, note: 'Just cleared the 3-install provisional bar.', provenance: 'fictive' },
   { id: 'T-105', name: 'Jordan Reyes', channel: 'Other', region: 'Southeast', lead: 'Gil', pool: 'Active', candidateScore: 3, metrics: { coverage: 3, reliability: 4, ontime: 3, upload: 3, issues: 3 }, installs: 3, projects: ['27th Street', 'The WWE'], provisional: false, note: 'Meets the 3.0 bar but marginal; watch the trend.', provenance: 'fictive' },
-  { id: 'T-106', name: 'Chris Dolan', channel: 'Craigslist', region: 'Southeast', lead: 'Gil', pool: 'Benched', candidateScore: 3, metrics: { coverage: 3, reliability: 2, ontime: 3, upload: 3, issues: 3 }, installs: 2, projects: [], provisional: true, note: 'Benched on the NO-SHOW HARD GATE (applies even while provisional); composite also < 3.0. In review.', provenance: 'fictive' },
-  { id: 'T-107', name: 'Ray Mott', channel: 'Craigslist', region: 'Southeast', lead: 'Gil', pool: 'Removed', candidateScore: 3, metrics: { coverage: 2, reliability: 1, ontime: 2, upload: 2, issues: 2 }, installs: 3, projects: [], provisional: false, note: 'Removed: 2nd no-show + sustained < 2.0. Candidate Score 3 (optimistic) vs Quality 1.75 = the estimate-vs-reality gap.', provenance: 'fictive' },
+  { id: 'T-106', name: 'Chris Dolan', channel: 'Craigslist', region: 'Southeast', lead: 'Gil', pool: 'Benched', candidateScore: 3, metrics: { coverage: 3, reliability: 2, ontime: 3, upload: 3, issues: 3 }, installs: 2, projects: [], provisional: true, note: 'Benched on the NO-SHOW HARD GATE (applies even while provisional); composite also < 3.0. In review.', noShows: [{ date: '2026-06-18', project: 'Hub At', region: 'Southeast', event: 'Scheduled deployment', note: 'Did not arrive and was unreachable; the site crew stood down and the day was lost. Covered next day by Devin Carter (RL flagged the hard gate).' }], provenance: 'fictive' },
+  { id: 'T-107', name: 'Ray Mott', channel: 'Craigslist', region: 'Southeast', lead: 'Gil', pool: 'Removed', candidateScore: 3, metrics: { coverage: 2, reliability: 1, ontime: 2, upload: 2, issues: 2 }, installs: 3, projects: [], provisional: false, note: 'Removed: 2nd no-show + sustained < 2.0. Candidate Score 3 (optimistic) vs Quality 1.75 = the estimate-vs-reality gap.', noShows: [{ date: '2026-05-05', project: 'WRH', region: 'Southeast', event: 'First installation day', note: 'Cancelled the morning of the deployment; covered by a returning technician. First strike.' }, { date: '2026-06-10', project: 'Z1', region: 'Southeast', event: 'Deploy / 0th installation', note: 'No-show at deploy — second strike, which triggered removal under the 2nd-no-show hard gate.' }], provenance: 'fictive' },
 ];
 
 // ---------------------------------------------------------------------------
